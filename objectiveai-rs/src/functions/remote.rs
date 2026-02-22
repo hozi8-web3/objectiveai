@@ -21,3 +21,15 @@ impl fmt::Display for Remote {
         }
     }
 }
+
+impl std::str::FromStr for Remote {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "github" => Ok(Remote::Github),
+            "filesystem" => Ok(Remote::Filesystem),
+            _ => Err(format!("invalid remote: {}", s)),
+        }
+    }
+}
