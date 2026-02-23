@@ -1,6 +1,7 @@
 //! ObjectiveAI API implementation of the GitHub Function fetcher.
 
 use crate::ctx;
+use futures::FutureExt;
 use objectiveai::error::StatusError;
 use std::sync::Arc;
 
@@ -24,7 +25,7 @@ where
 {
     async fn fetch(
         &self,
-        _ctx: ctx::Context<CTXEXT>,
+        ctx: ctx::Context<CTXEXT>,
         owner: &str,
         repository: &str,
         commit: Option<&str>,
@@ -32,18 +33,115 @@ where
         Option<objectiveai::functions::response::GetFunction>,
         objectiveai::error::ResponseError,
     > {
-        match objectiveai::functions::get_function(
-            &self.client,
-            objectiveai::functions::Remote::Github,
-            owner,
-            repository,
-            commit,
-        )
-        .await
-        {
-            Ok(function) => Ok(Some(function)),
-            Err(e) if e.status() == 404 => Ok(None),
-            Err(e) => Err(objectiveai::error::ResponseError::from(&e)),
+        // Resolve commit (use latest_commit_cache if commit is None)
+        let commit = if let Some(c) = commit {
+            c.to_owned()
+        } else {
+            let function_cache = ctx.function_cache.clone();
+            let shared = ctx
+                .latest_commit_cache
+                .entry((
+                    objectiveai::functions::Remote::Github,
+                    owner.to_owned(),
+                    repository.to_owned(),
+                ))
+                .or_insert_with(|| {
+                    let (tx, rx) = tokio::sync::oneshot::channel();
+                    let client = self.client.clone();
+                    let owner = owner.to_owned();
+                    let repository = repository.to_owned();
+                    tokio::spawn(async move {
+                        let result = match objectiveai::functions::get_function(
+                            &client,
+                            objectiveai::functions::Remote::Github,
+                            &owner,
+                            &repository,
+                            None,
+                        )
+                        .await
+                        {
+                            Ok(function) => {
+                                let commit = function.commit.clone();
+                                // Populate function_cache with the fetched result
+                                function_cache
+                                    .entry((
+                                        objectiveai::functions::Remote::Github,
+                                        function.owner.clone(),
+                                        function.repository.clone(),
+                                        commit.clone(),
+                                    ))
+                                    .or_insert_with(|| {
+                                        let (tx, rx) = tokio::sync::oneshot::channel();
+                                        let _ = tx.send(Ok(Some(function.inner)));
+                                        rx.shared()
+                                    });
+                                Ok(Some(commit))
+                            }
+                            Err(e) if e.status() == 404 => Ok(None),
+                            Err(e) => {
+                                Err(objectiveai::error::ResponseError::from(&e))
+                            }
+                        };
+                        let _ = tx.send(result);
+                    });
+                    rx.shared()
+                })
+                .clone();
+            match shared.await.unwrap() {
+                Ok(Some(commit)) => commit,
+                Ok(None) => return Ok(None),
+                Err(e) => return Err(e),
+            }
+        };
+
+        // Fetch function with resolved commit (cached)
+        let shared = ctx
+            .function_cache
+            .entry((
+                objectiveai::functions::Remote::Github,
+                owner.to_owned(),
+                repository.to_owned(),
+                commit.clone(),
+            ))
+            .or_insert_with(|| {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                let client = self.client.clone();
+                let owner = owner.to_owned();
+                let repository = repository.to_owned();
+                let commit = commit.clone();
+                tokio::spawn(async move {
+                    let result = match objectiveai::functions::get_function(
+                        &client,
+                        objectiveai::functions::Remote::Github,
+                        &owner,
+                        &repository,
+                        Some(&commit),
+                    )
+                    .await
+                    {
+                        Ok(function) => Ok(Some(function.inner)),
+                        Err(e) if e.status() == 404 => Ok(None),
+                        Err(e) => {
+                            Err(objectiveai::error::ResponseError::from(&e))
+                        }
+                    };
+                    let _ = tx.send(result);
+                });
+                rx.shared()
+            })
+            .clone();
+        match shared.await.unwrap() {
+            Ok(Some(inner)) => {
+                Ok(Some(objectiveai::functions::response::GetFunction {
+                    remote: objectiveai::functions::Remote::Github,
+                    owner: owner.to_owned(),
+                    repository: repository.to_owned(),
+                    commit,
+                    inner,
+                }))
+            }
+            Ok(None) => Ok(None),
+            Err(e) => Err(e),
         }
     }
 }
