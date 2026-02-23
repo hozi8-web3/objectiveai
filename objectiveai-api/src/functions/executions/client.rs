@@ -270,8 +270,10 @@ pub struct Client<
     FVVOTE,
     FCVOTE,
     VUSG,
-    FFN,
-    FPFL,
+    FFNG,
+    FFNF,
+    FPFLG,
+    FPFLF,
     FUSG,
 > {
     /// Chat completions client for reasoning summaries.
@@ -292,15 +294,15 @@ pub struct Client<
         >,
     >,
     /// Fetcher for Function definitions.
-    pub function_fetcher: Arc<FFN>,
+    pub function_fetcher: Arc<functions::function_fetcher::FetcherRouter<FFNG, FFNF>>,
     /// Fetcher for Profile definitions.
-    pub profile_fetcher: Arc<FPFL>,
+    pub profile_fetcher: Arc<functions::profile_fetcher::FetcherRouter<FPFLG, FPFLF>>,
     /// Handler for recording usage after execution.
     pub usage_handler: Arc<FUSG>,
 }
 
-impl<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFN, FPFL, FUSG>
-    Client<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFN, FPFL, FUSG>
+impl<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF, FUSG>
+    Client<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF, FUSG>
 {
     /// Creates a new Function execution client.
     pub fn new(
@@ -319,8 +321,8 @@ impl<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFN, FPFL, FUSG>
                 VUSG,
             >,
         >,
-        function_fetcher: Arc<FFN>,
-        profile_fetcher: Arc<FPFL>,
+        function_fetcher: Arc<functions::function_fetcher::FetcherRouter<FFNG, FFNF>>,
+        profile_fetcher: Arc<functions::profile_fetcher::FetcherRouter<FPFLG, FPFLF>>,
         usage_handler: Arc<FUSG>,
     ) -> Self {
         Self {
@@ -334,8 +336,8 @@ impl<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFN, FPFL, FUSG>
     }
 }
 
-impl<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFN, FPFL, FUSG>
-    Client<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFN, FPFL, FUSG>
+impl<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF, FUSG>
+    Client<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF, FUSG>
 where
     CTXEXT: ctx::ContextExt + Send + Sync + 'static,
     FENSLLM:
@@ -357,8 +359,10 @@ where
         + Send
         + Sync
         + 'static,
-    FFN: functions::function_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
-    FPFL: functions::profile_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+    FFNG: functions::function_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+    FFNF: functions::function_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+    FPFLG: functions::profile_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+    FPFLF: functions::profile_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
     FUSG: super::usage_handler::UsageHandler<CTXEXT> + Send + Sync + 'static,
 {
     /// Executes a Function and returns the complete response.
@@ -446,8 +450,8 @@ where
     }
 }
 
-impl<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFN, FPFL, FUSG>
-    Client<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFN, FPFL, FUSG>
+impl<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF, FUSG>
+    Client<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF, FUSG>
 where
     CTXEXT: ctx::ContextExt + Send + Sync + 'static,
     FENSLLM:
@@ -469,8 +473,10 @@ where
         + Send
         + Sync
         + 'static,
-    FFN: functions::function_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
-    FPFL: functions::profile_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+    FFNG: functions::function_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+    FFNF: functions::function_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+    FPFLG: functions::profile_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+    FPFLF: functions::profile_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
     FUSG: Send + Sync + 'static,
 {
     /// Executes a Function with streaming output.

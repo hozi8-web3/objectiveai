@@ -464,10 +464,16 @@ pub async fn get_flat_task_profile<CTXEXT>(
     task_output: Option<objectiveai::functions::expression::Expression>,
     invert_output: bool,
     function_fetcher: Arc<
-        impl super::function_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+        super::function_fetcher::FetcherRouter<
+            impl super::function_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+            impl super::function_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+        >,
     >,
     profile_fetcher: Arc<
-        impl super::profile_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+        super::profile_fetcher::FetcherRouter<
+            impl super::profile_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+            impl super::profile_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+        >,
     >,
     ensemble_fetcher: Arc<
         crate::ensemble::fetcher::CachingFetcher<

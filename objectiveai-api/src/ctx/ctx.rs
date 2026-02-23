@@ -48,6 +48,48 @@ pub struct Context<CTXEXT> {
             >,
         >,
     >,
+    /// Cache for latest commit fetches, keyed by (remote, owner, repository).
+    pub latest_commit_cache: Arc<
+        DashMap<
+            (objectiveai::functions::Remote, String, String),
+            Shared<
+                tokio::sync::oneshot::Receiver<
+                    Result<
+                        Option<String>,
+                        objectiveai::error::ResponseError,
+                    >,
+                >,
+            >,
+        >,
+    >,
+    /// Cache for function fetches, keyed by (remote, owner, repository, commit).
+    pub function_cache: Arc<
+        DashMap<
+            (objectiveai::functions::Remote, String, String, String),
+            Shared<
+                tokio::sync::oneshot::Receiver<
+                    Result<
+                        Option<objectiveai::functions::RemoteFunction>,
+                        objectiveai::error::ResponseError,
+                    >,
+                >,
+            >,
+        >,
+    >,
+    /// Cache for profile fetches, keyed by (remote, owner, repository, commit).
+    pub profile_cache: Arc<
+        DashMap<
+            (objectiveai::functions::Remote, String, String, String),
+            Shared<
+                tokio::sync::oneshot::Receiver<
+                    Result<
+                        Option<objectiveai::functions::RemoteProfile>,
+                        objectiveai::error::ResponseError,
+                    >,
+                >,
+            >,
+        >,
+    >,
 }
 
 impl<CTXEXT> Clone for Context<CTXEXT> {
@@ -57,6 +99,9 @@ impl<CTXEXT> Clone for Context<CTXEXT> {
             cost_multiplier: self.cost_multiplier,
             ensemble_cache: self.ensemble_cache.clone(),
             ensemble_llm_cache: self.ensemble_llm_cache.clone(),
+            latest_commit_cache: self.latest_commit_cache.clone(),
+            function_cache: self.function_cache.clone(),
+            profile_cache: self.profile_cache.clone(),
         }
     }
 }
@@ -69,6 +114,9 @@ impl<CTXEXT> Context<CTXEXT> {
             cost_multiplier,
             ensemble_cache: Arc::new(DashMap::new()),
             ensemble_llm_cache: Arc::new(DashMap::new()),
+            latest_commit_cache: Arc::new(DashMap::new()),
+            function_cache: Arc::new(DashMap::new()),
+            profile_cache: Arc::new(DashMap::new()),
         }
     }
 }

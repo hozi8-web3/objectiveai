@@ -8,13 +8,12 @@ use crate::ctx;
 /// by remote/owner/repository (optionally with commit SHA).
 #[async_trait::async_trait]
 pub trait Fetcher<CTXEXT> {
-    /// Fetches a Function by remote/owner/repository/commit.
+    /// Fetches a Function by owner/repository/commit.
     ///
     /// Returns None if the Function is not found.
     async fn fetch(
         &self,
         ctx: ctx::Context<CTXEXT>,
-        remote: objectiveai::functions::Remote,
         owner: &str,
         repository: &str,
         commit: Option<&str>,

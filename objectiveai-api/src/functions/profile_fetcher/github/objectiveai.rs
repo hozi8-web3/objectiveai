@@ -1,6 +1,7 @@
 //! ObjectiveAI API implementation of the GitHub Profile fetcher.
 
 use crate::ctx;
+use futures::FutureExt;
 use objectiveai::error::StatusError;
 use std::sync::Arc;
 
@@ -24,8 +25,7 @@ where
 {
     async fn fetch(
         &self,
-        _ctx: ctx::Context<CTXEXT>,
-        _remote: objectiveai::functions::Remote,
+        ctx: ctx::Context<CTXEXT>,
         owner: &str,
         repository: &str,
         commit: Option<&str>,
@@ -33,18 +33,118 @@ where
         Option<objectiveai::functions::profiles::response::GetProfile>,
         objectiveai::error::ResponseError,
     > {
-        match objectiveai::functions::profiles::get_profile(
-            &self.client,
-            objectiveai::functions::Remote::Github,
-            owner,
-            repository,
-            commit,
-        )
-        .await
-        {
-            Ok(profile) => Ok(Some(profile)),
-            Err(e) if e.status() == 404 => Ok(None),
-            Err(e) => Err(objectiveai::error::ResponseError::from(&e)),
+        // Resolve commit (use latest_commit_cache if commit is None)
+        let commit = if let Some(c) = commit {
+            c.to_owned()
+        } else {
+            let profile_cache = ctx.profile_cache.clone();
+            let shared = ctx
+                .latest_commit_cache
+                .entry((
+                    objectiveai::functions::Remote::Github,
+                    owner.to_owned(),
+                    repository.to_owned(),
+                ))
+                .or_insert_with(|| {
+                    let (tx, rx) = tokio::sync::oneshot::channel();
+                    let client = self.client.clone();
+                    let owner = owner.to_owned();
+                    let repository = repository.to_owned();
+                    tokio::spawn(async move {
+                        let result =
+                            match objectiveai::functions::profiles::get_profile(
+                                &client,
+                                objectiveai::functions::Remote::Github,
+                                &owner,
+                                &repository,
+                                None,
+                            )
+                            .await
+                            {
+                                Ok(profile) => {
+                                    let commit = profile.commit.clone();
+                                    // Populate profile_cache with the fetched result
+                                    profile_cache
+                                        .entry((
+                                            objectiveai::functions::Remote::Github,
+                                            profile.owner.clone(),
+                                            profile.repository.clone(),
+                                            commit.clone(),
+                                        ))
+                                        .or_insert_with(|| {
+                                            let (tx, rx) =
+                                                tokio::sync::oneshot::channel();
+                                            let _ = tx.send(Ok(Some(profile.inner)));
+                                            rx.shared()
+                                        });
+                                    Ok(Some(commit))
+                                }
+                                Err(e) if e.status() == 404 => Ok(None),
+                                Err(e) => Err(
+                                    objectiveai::error::ResponseError::from(&e),
+                                ),
+                            };
+                        let _ = tx.send(result);
+                    });
+                    rx.shared()
+                })
+                .clone();
+            match shared.await.unwrap() {
+                Ok(Some(commit)) => commit,
+                Ok(None) => return Ok(None),
+                Err(e) => return Err(e),
+            }
+        };
+
+        // Fetch profile with resolved commit (cached)
+        let shared = ctx
+            .profile_cache
+            .entry((
+                objectiveai::functions::Remote::Github,
+                owner.to_owned(),
+                repository.to_owned(),
+                commit.clone(),
+            ))
+            .or_insert_with(|| {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                let client = self.client.clone();
+                let owner = owner.to_owned();
+                let repository = repository.to_owned();
+                let commit = commit.clone();
+                tokio::spawn(async move {
+                    let result =
+                        match objectiveai::functions::profiles::get_profile(
+                            &client,
+                            objectiveai::functions::Remote::Github,
+                            &owner,
+                            &repository,
+                            Some(&commit),
+                        )
+                        .await
+                        {
+                            Ok(profile) => Ok(Some(profile.inner)),
+                            Err(e) if e.status() == 404 => Ok(None),
+                            Err(e) => {
+                                Err(objectiveai::error::ResponseError::from(&e))
+                            }
+                        };
+                    let _ = tx.send(result);
+                });
+                rx.shared()
+            })
+            .clone();
+        match shared.await.unwrap() {
+            Ok(Some(inner)) => {
+                Ok(Some(objectiveai::functions::profiles::response::GetProfile {
+                    remote: objectiveai::functions::Remote::Github,
+                    owner: owner.to_owned(),
+                    repository: repository.to_owned(),
+                    commit,
+                    inner,
+                }))
+            }
+            Ok(None) => Ok(None),
+            Err(e) => Err(e),
         }
     }
 }

@@ -70,6 +70,8 @@ struct Config {
         default = "40000" // 40 seconds
     )]
     chat_completions_backoff_max_elapsed_time: u64,
+    #[envconfig(from = "GITHUB_PAT")]
+    github_pat: Option<String>,
     #[envconfig(from = "ADDRESS", default = "0.0.0.0")]
     address: String,
     #[envconfig(from = "PORT", default = "5000")]
@@ -96,6 +98,7 @@ async fn main() {
         chat_completions_backoff_multiplier,
         chat_completions_backoff_max_interval,
         chat_completions_backoff_max_elapsed_time,
+        github_pat,
         address,
         port,
     } = Config::init_from_env().unwrap();
@@ -134,9 +137,9 @@ async fn main() {
                 http_client,
                 openrouter_api_base,
                 openrouter_api_key,
-                user_agent,
-                x_title,
-                http_referer,
+                user_agent.clone(),
+                x_title.clone(),
+                http_referer.clone(),
             ),
         ),
         std::time::Duration::from_millis(
@@ -190,6 +193,32 @@ async fn main() {
             cache_vote_fetcher.clone(),
         ));
 
+    // GitHub Client
+    let github_client = Arc::new(functions::github::Client::new(
+        reqwest::Client::new(),
+        github_pat,
+        user_agent,
+        x_title,
+        http_referer,
+        backoff::ExponentialBackoff {
+            current_interval: std::time::Duration::from_millis(
+                chat_completions_backoff_current_interval,
+            ),
+            initial_interval: std::time::Duration::from_millis(
+                chat_completions_backoff_initial_interval,
+            ),
+            randomization_factor: chat_completions_backoff_randomization_factor,
+            multiplier: chat_completions_backoff_multiplier,
+            max_interval: std::time::Duration::from_millis(
+                chat_completions_backoff_max_interval,
+            ),
+            max_elapsed_time: Some(std::time::Duration::from_millis(
+                chat_completions_backoff_max_elapsed_time,
+            )),
+            ..Default::default()
+        },
+    ));
+
     // Filesystem base directory for local function/profile repositories
     let filesystem_base_dir = dirs::home_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -199,8 +228,8 @@ async fn main() {
     // Function Fetcher (routes to GitHub or Filesystem based on Remote)
     let function_fetcher = Arc::new(functions::function_fetcher::FetcherRouter::new(
         Arc::new(
-            functions::function_fetcher::github::ObjectiveAiFetcher::new(
-                objectiveai_http_client.clone(),
+            functions::function_fetcher::github::GithubFetcher::new(
+                github_client.clone(),
             ),
         ),
         Arc::new(
@@ -213,8 +242,8 @@ async fn main() {
     // Function Profile Fetcher (routes to GitHub or Filesystem based on Remote)
     let profile_fetcher = Arc::new(functions::profile_fetcher::FetcherRouter::new(
         Arc::new(
-            functions::profile_fetcher::github::ObjectiveAiFetcher::new(
-                objectiveai_http_client.clone(),
+            functions::profile_fetcher::github::GithubFetcher::new(
+                github_client,
             ),
         ),
         Arc::new(
@@ -1268,6 +1297,10 @@ async fn list_functions(
             + Send
             + Sync
             + 'static,
+            impl functions::function_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::retrieval_client::Client<ctx::DefaultContextExt>
             + Send
             + Sync
@@ -1287,6 +1320,10 @@ async fn get_function_usage(
     client: Arc<
         functions::Client<
             ctx::DefaultContextExt,
+            impl functions::function_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::function_fetcher::Fetcher<ctx::DefaultContextExt>
             + Send
             + Sync
@@ -1349,6 +1386,14 @@ async fn execute_function(
             + Send
             + Sync
             + 'static,
+            impl functions::function_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
+            impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
             + Send
             + Sync
@@ -1405,6 +1450,10 @@ async fn list_profiles(
             + Send
             + Sync
             + 'static,
+            impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::profiles::retrieval_client::Client<
                 ctx::DefaultContextExt,
             > + Send
@@ -1425,6 +1474,10 @@ async fn get_profile_usage(
     client: Arc<
         functions::profiles::Client<
             ctx::DefaultContextExt,
+            impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
             + Send
             + Sync
@@ -1618,6 +1671,10 @@ async fn get_function(
             + Send
             + Sync
             + 'static,
+            impl functions::function_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::retrieval_client::Client<ctx::DefaultContextExt>
             + Send
             + Sync
@@ -1646,6 +1703,10 @@ async fn get_profile(
     client: Arc<
         functions::profiles::Client<
             ctx::DefaultContextExt,
+            impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
             + Send
             + Sync
