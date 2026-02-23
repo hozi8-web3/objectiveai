@@ -4,4 +4,5 @@ export * from "./response_image";
 export * from "./role";
 export * as Streaming from "./streaming";
 export * as Unary from "./unary";
+export * from "./upstream";
 export * from "./usage";

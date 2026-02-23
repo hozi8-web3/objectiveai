@@ -33,6 +33,8 @@ pub struct ChatCompletionChunk {
     /// Token usage (only present in the final chunk).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<response::Usage>,
+    /// Upstream provider
+    pub upstream: response::Upstream,
 
     /// The provider that served the request (OpenRouter-specific).
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -1,5 +1,6 @@
 import z from "zod";
 import { ChoiceSchema } from "./choice";
+import { UpstreamSchema } from "../upstream";
 import { UsageSchema } from "../usage";
 import { ResponseObjectSchema } from "./response_object";
 import { convert, type JSONSchema } from "../../../../json_schema";
@@ -30,6 +31,7 @@ export const ChatCompletionSchema = z
     service_tier: z.string().optional(),
     system_fingerprint: z.string().optional(),
     usage: UsageSchema,
+    upstream: UpstreamSchema,
     provider: z
       .string()
       .optional()
