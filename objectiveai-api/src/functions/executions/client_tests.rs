@@ -116,7 +116,6 @@ impl functions::function_fetcher::Fetcher<MockContextExt> for MockFunctionFetche
     async fn fetch(
         &self,
         _ctx: ctx::Context<MockContextExt>,
-        _remote: objectiveai::functions::Remote,
         _owner: &str,
         _repository: &str,
         _commit: Option<&str>,
@@ -137,7 +136,6 @@ impl functions::profile_fetcher::Fetcher<MockContextExt> for MockProfileFetcher 
     async fn fetch(
         &self,
         _ctx: ctx::Context<MockContextExt>,
-        _remote: objectiveai::functions::Remote,
         _owner: &str,
         _repository: &str,
         _commit: Option<&str>,
@@ -234,6 +232,8 @@ type TestFunctionClient = super::Client<
     MockCacheVoteFetcher,
     MockVectorUsageHandler,
     MockFunctionFetcher,
+    MockFunctionFetcher,
+    MockProfileFetcher,
     MockProfileFetcher,
     MockFunctionUsageHandler,
 >;
@@ -306,8 +306,14 @@ fn create_test_function_client(
     let ensemble_fetcher = Arc::new(ensemble::fetcher::CachingFetcher::new(Arc::new(
         MockEnsembleFetcher,
     )));
-    let function_fetcher = Arc::new(MockFunctionFetcher);
-    let profile_fetcher = Arc::new(MockProfileFetcher);
+    let function_fetcher = Arc::new(functions::function_fetcher::FetcherRouter::new(
+        Arc::new(MockFunctionFetcher),
+        Arc::new(MockFunctionFetcher),
+    ));
+    let profile_fetcher = Arc::new(functions::profile_fetcher::FetcherRouter::new(
+        Arc::new(MockProfileFetcher),
+        Arc::new(MockProfileFetcher),
+    ));
     let usage_handler = Arc::new(MockFunctionUsageHandler);
 
     Arc::new(super::Client::new(

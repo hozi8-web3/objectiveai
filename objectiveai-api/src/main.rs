@@ -1268,6 +1268,10 @@ async fn list_functions(
             + Send
             + Sync
             + 'static,
+            impl functions::function_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::retrieval_client::Client<ctx::DefaultContextExt>
             + Send
             + Sync
@@ -1287,6 +1291,10 @@ async fn get_function_usage(
     client: Arc<
         functions::Client<
             ctx::DefaultContextExt,
+            impl functions::function_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::function_fetcher::Fetcher<ctx::DefaultContextExt>
             + Send
             + Sync
@@ -1349,6 +1357,14 @@ async fn execute_function(
             + Send
             + Sync
             + 'static,
+            impl functions::function_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
+            impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
             + Send
             + Sync
@@ -1405,6 +1421,10 @@ async fn list_profiles(
             + Send
             + Sync
             + 'static,
+            impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::profiles::retrieval_client::Client<
                 ctx::DefaultContextExt,
             > + Send
@@ -1425,6 +1445,10 @@ async fn get_profile_usage(
     client: Arc<
         functions::profiles::Client<
             ctx::DefaultContextExt,
+            impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
             + Send
             + Sync
@@ -1618,6 +1642,10 @@ async fn get_function(
             + Send
             + Sync
             + 'static,
+            impl functions::function_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::retrieval_client::Client<ctx::DefaultContextExt>
             + Send
             + Sync
@@ -1646,6 +1674,10 @@ async fn get_profile(
     client: Arc<
         functions::profiles::Client<
             ctx::DefaultContextExt,
+            impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
+            + Send
+            + Sync
+            + 'static,
             impl functions::profile_fetcher::Fetcher<ctx::DefaultContextExt>
             + Send
             + Sync

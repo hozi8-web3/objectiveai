@@ -25,7 +25,6 @@ where
     async fn fetch(
         &self,
         _ctx: ctx::Context<CTXEXT>,
-        _remote: objectiveai::functions::Remote,
         owner: &str,
         repository: &str,
         commit: Option<&str>,

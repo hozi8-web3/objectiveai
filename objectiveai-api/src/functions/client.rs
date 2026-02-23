@@ -4,18 +4,18 @@ use crate::ctx;
 use std::sync::Arc;
 
 /// Client for function operations.
-pub struct Client<CTXEXT, FFN, RTRVL> {
-    /// Fetcher for Function definitions.
-    pub function_fetcher: Arc<FFN>,
+pub struct Client<CTXEXT, G, F, RTRVL> {
+    /// Router for Function definition fetching.
+    pub function_fetcher: Arc<super::function_fetcher::FetcherRouter<G, F>>,
     /// Client for listing functions and getting usage statistics.
     pub retrieval_client: Arc<RTRVL>,
     pub _ctx_ext: std::marker::PhantomData<CTXEXT>,
 }
 
-impl<CTXEXT, FFN, RTRVL> Client<CTXEXT, FFN, RTRVL> {
+impl<CTXEXT, G, F, RTRVL> Client<CTXEXT, G, F, RTRVL> {
     /// Creates a new functions client.
     pub fn new(
-        function_fetcher: Arc<FFN>,
+        function_fetcher: Arc<super::function_fetcher::FetcherRouter<G, F>>,
         retrieval_client: Arc<RTRVL>,
     ) -> Self {
         Self {
@@ -26,10 +26,11 @@ impl<CTXEXT, FFN, RTRVL> Client<CTXEXT, FFN, RTRVL> {
     }
 }
 
-impl<CTXEXT, FFN, RTRVL> Client<CTXEXT, FFN, RTRVL>
+impl<CTXEXT, G, F, RTRVL> Client<CTXEXT, G, F, RTRVL>
 where
     CTXEXT: Send + Sync + 'static,
-    FFN: super::function_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+    G: super::function_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
+    F: super::function_fetcher::Fetcher<CTXEXT> + Send + Sync + 'static,
     RTRVL: super::retrieval_client::Client<CTXEXT> + Send + Sync + 'static,
 {
     /// Lists functions.

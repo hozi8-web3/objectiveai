@@ -20,14 +20,9 @@ impl<G, F> FetcherRouter<G, F> {
     }
 }
 
-#[async_trait::async_trait]
-impl<CTXEXT, G, F> super::Fetcher<CTXEXT> for FetcherRouter<G, F>
-where
-    CTXEXT: Send + Sync + 'static,
-    G: super::Fetcher<CTXEXT> + Send + Sync + 'static,
-    F: super::Fetcher<CTXEXT> + Send + Sync + 'static,
-{
-    async fn fetch(
+impl<G, F> FetcherRouter<G, F> {
+    /// Dispatches a Function fetch to the appropriate sub-fetcher based on the remote.
+    pub async fn fetch<CTXEXT>(
         &self,
         ctx: ctx::Context<CTXEXT>,
         remote: objectiveai::functions::Remote,
@@ -37,14 +32,19 @@ where
     ) -> Result<
         Option<objectiveai::functions::response::GetFunction>,
         objectiveai::error::ResponseError,
-    > {
+    >
+    where
+        CTXEXT: Send + Sync + 'static,
+        G: super::Fetcher<CTXEXT> + Send + Sync + 'static,
+        F: super::Fetcher<CTXEXT> + Send + Sync + 'static,
+    {
         match remote {
             objectiveai::functions::Remote::Github => {
-                self.github.fetch(ctx, remote, owner, repository, commit).await
+                self.github.fetch(ctx, owner, repository, commit).await
             }
             objectiveai::functions::Remote::Filesystem => {
                 self.filesystem
-                    .fetch(ctx, remote, owner, repository, commit)
+                    .fetch(ctx, owner, repository, commit)
                     .await
             }
         }
