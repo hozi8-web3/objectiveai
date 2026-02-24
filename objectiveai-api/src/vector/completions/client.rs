@@ -387,9 +387,9 @@ where
                 }
             }
         }
-        if positive_weight_count < 2 {
+        if positive_weight_count < 1 {
             return Err(super::Error::InvalidProfile(
-                "profile must have two or more positive weights".to_string(),
+                "profile must have one or more positive weights".to_string(),
             ));
         }
 
