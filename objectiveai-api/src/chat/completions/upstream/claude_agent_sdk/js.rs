@@ -44,7 +44,7 @@ pub fn build_js(
     format!(
         r#"
 delete process.env.CLAUDECODE;
-const {{ query }} = require("@anthropic-ai/claude-agent-sdk");
+const {{ query }} = require(process.env.CLAUDE_AGENT_SDK_PATH || "@anthropic-ai/claude-agent-sdk");
 
 (async () => {{
   try {{

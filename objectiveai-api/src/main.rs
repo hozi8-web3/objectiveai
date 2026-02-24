@@ -140,7 +140,7 @@ async fn main() {
                 x_title.clone(),
                 http_referer.clone(),
             )),
-            Some(chat::completions::upstream::claude_agent_sdk::client::Client),
+            Some(chat::completions::upstream::claude_agent_sdk::client::Client::new()),
         ),
         std::time::Duration::from_millis(
             chat_completions_backoff_current_interval,

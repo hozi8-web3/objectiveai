@@ -7,6 +7,14 @@ use serde::Deserialize;
 pub enum ParsedEvent {
     /// Initial message with upstream IDs.
     MessageStart { id: String, model: String },
+    /// Start of a tool_use content block.
+    ToolUseStart {
+        index: u64,
+        id: String,
+        name: String,
+    },
+    /// Partial JSON input for a tool call.
+    InputJsonDelta { index: u64, partial_json: String },
     /// Text content delta.
     TextDelta(String),
     /// Thinking/reasoning content delta.
@@ -52,12 +60,27 @@ pub fn parse_line(
                     model: message.model,
                 })
             }
-            StreamEvent::ContentBlockDelta { delta } => match delta {
+            StreamEvent::ContentBlockStart {
+                index,
+                content_block,
+            } => match content_block {
+                ContentBlock::ToolUse { id, name } => {
+                    Some(ParsedEvent::ToolUseStart { index, id, name })
+                }
+                ContentBlock::Unknown => None,
+            },
+            StreamEvent::ContentBlockDelta { index, delta } => match delta {
                 ContentDelta::TextDelta { text } => {
                     Some(ParsedEvent::TextDelta(text))
                 }
                 ContentDelta::ThinkingDelta { thinking } => {
                     Some(ParsedEvent::ThinkingDelta(thinking))
+                }
+                ContentDelta::InputJsonDelta { partial_json } => {
+                    Some(ParsedEvent::InputJsonDelta {
+                        index,
+                        partial_json,
+                    })
                 }
                 ContentDelta::Unknown => None,
             },
@@ -101,8 +124,13 @@ enum Envelope {
 enum StreamEvent {
     #[serde(rename = "message_start")]
     MessageStart { message: MessageStartMessage },
+    #[serde(rename = "content_block_start")]
+    ContentBlockStart {
+        index: u64,
+        content_block: ContentBlock,
+    },
     #[serde(rename = "content_block_delta")]
-    ContentBlockDelta { delta: ContentDelta },
+    ContentBlockDelta { index: u64, delta: ContentDelta },
     #[serde(rename = "message_delta")]
     MessageDelta {
         delta: MessageDeltaBody,
@@ -110,6 +138,15 @@ enum StreamEvent {
     },
     #[serde(rename = "message_stop")]
     MessageStop,
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type")]
+enum ContentBlock {
+    #[serde(rename = "tool_use")]
+    ToolUse { id: String, name: String },
     #[serde(other)]
     Unknown,
 }
@@ -127,6 +164,8 @@ enum ContentDelta {
     TextDelta { text: String },
     #[serde(rename = "thinking_delta")]
     ThinkingDelta { thinking: String },
+    #[serde(rename = "input_json_delta")]
+    InputJsonDelta { partial_json: String },
     #[serde(other)]
     Unknown,
 }
