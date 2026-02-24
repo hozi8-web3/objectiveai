@@ -7,12 +7,7 @@ use crate::{
 };
 use futures::{Stream, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    hash::Hasher,
-    sync::Arc,
-    time,
-};
+use std::{collections::HashMap, hash::Hasher, sync::Arc, time};
 
 /// Generates a unique response ID for scalar Function executions.
 pub fn scalar_response_id(created: u64) -> String {
@@ -36,7 +31,9 @@ pub fn vector_response_id(created: u64) -> String {
 fn compute_weighted_function_output(
     function_type: &functions::FunctionType,
     profile_weights: &[rust_decimal::Decimal],
-    task_outputs: &[Option<objectiveai::functions::expression::FunctionOutput>],
+    task_outputs: &[Option<
+        objectiveai::functions::expression::FunctionOutput,
+    >],
 ) -> objectiveai::functions::expression::FunctionOutput {
     use objectiveai::functions::expression::FunctionOutput;
     use rust_decimal::Decimal;
@@ -81,7 +78,10 @@ fn compute_weighted_function_output(
                         weighted_sum += (*weight / total_weight) * s;
                     }
                     _ => {
-                        panic!("expected scalar output in scalar function, got {:?}", fn_output);
+                        panic!(
+                            "expected scalar output in scalar function, got {:?}",
+                            fn_output
+                        );
                     }
                 }
             }
@@ -103,7 +103,11 @@ fn compute_weighted_function_output(
                 match fn_output {
                     FunctionOutput::Vector(v) => {
                         if v.len() != vec_len {
-                            panic!("vector length mismatch: expected {}, got {}", vec_len, v.len());
+                            panic!(
+                                "vector length mismatch: expected {}, got {}",
+                                vec_len,
+                                v.len()
+                            );
                         }
                         let normalized_weight = *weight / total_weight;
                         for (j, val) in v.iter().enumerate() {
@@ -111,7 +115,10 @@ fn compute_weighted_function_output(
                         }
                     }
                     _ => {
-                        panic!("expected vector output in vector function, got {:?}", fn_output);
+                        panic!(
+                            "expected vector output in vector function, got {:?}",
+                            fn_output
+                        );
                     }
                 }
             }
@@ -141,12 +148,16 @@ fn apply_task_output_expression(
     objectiveai::functions::expression::FunctionOutput,
     Option<objectiveai::error::ResponseError>,
 ) {
-    use objectiveai::functions::expression::{FunctionOutput, TaskOutput, Params, ParamsRef};
+    use objectiveai::functions::expression::{
+        FunctionOutput, Params, ParamsRef, TaskOutput,
+    };
     use rust_decimal::Decimal;
 
     fn invert_function_output(output: FunctionOutput) -> FunctionOutput {
         match output {
-            FunctionOutput::Scalar(s) => FunctionOutput::Scalar(Decimal::ONE - s),
+            FunctionOutput::Scalar(s) => {
+                FunctionOutput::Scalar(Decimal::ONE - s)
+            }
             FunctionOutput::Vector(mut v) => {
                 if v.is_empty() {
                     return FunctionOutput::Vector(v);
@@ -179,7 +190,8 @@ fn apply_task_output_expression(
     });
 
     // Evaluate the expression - it transforms the raw output into FunctionOutput
-    let result = match output_expression.compile_one::<FunctionOutput>(&params) {
+    let result = match output_expression.compile_one::<FunctionOutput>(&params)
+    {
         Ok(result) => result,
         Err(e) => {
             return (
@@ -207,17 +219,24 @@ fn apply_task_output_expression(
             }
         }
         // Scalar function got vector output - error
-        (functions::FunctionType::Scalar, result @ FunctionOutput::Vector(_)) => (
+        (
+            functions::FunctionType::Scalar,
+            result @ FunctionOutput::Vector(_),
+        ) => (
             result.into_err(),
             Some(objectiveai::error::ResponseError::from(
                 &super::Error::InvalidScalarOutput,
             )),
         ),
         // Vector function must return vector output
-        (functions::FunctionType::Vector { output_length, .. }, FunctionOutput::Vector(v)) => {
+        (
+            functions::FunctionType::Vector { output_length, .. },
+            FunctionOutput::Vector(v),
+        ) => {
             let sum: Decimal = v.iter().cloned().sum();
             let len_ok = output_length.is_none_or(|len| len == v.len() as u64);
-            let sum_ok = sum >= rust_decimal::dec!(0.99) && sum <= rust_decimal::dec!(1.01);
+            let sum_ok = sum >= rust_decimal::dec!(0.99)
+                && sum <= rust_decimal::dec!(1.01);
             if len_ok && sum_ok {
                 (FunctionOutput::Vector(v), None)
             } else {
@@ -231,10 +250,15 @@ fn apply_task_output_expression(
             }
         }
         // Vector function got scalar output - error
-        (functions::FunctionType::Vector { output_length, .. }, result @ FunctionOutput::Scalar(_)) => (
+        (
+            functions::FunctionType::Vector { output_length, .. },
+            result @ FunctionOutput::Scalar(_),
+        ) => (
             result.into_err(),
             Some(objectiveai::error::ResponseError::from(
-                &super::Error::InvalidVectorOutput(output_length.unwrap_or_default() as usize),
+                &super::Error::InvalidVectorOutput(
+                    output_length.unwrap_or_default() as usize,
+                ),
             )),
         ),
         // Error output passes through - this means the expression itself produced an error value
@@ -294,15 +318,43 @@ pub struct Client<
         >,
     >,
     /// Fetcher for Function definitions.
-    pub function_fetcher: Arc<functions::function_fetcher::FetcherRouter<FFNG, FFNF>>,
+    pub function_fetcher:
+        Arc<functions::function_fetcher::FetcherRouter<FFNG, FFNF>>,
     /// Fetcher for Profile definitions.
-    pub profile_fetcher: Arc<functions::profile_fetcher::FetcherRouter<FPFLG, FPFLF>>,
+    pub profile_fetcher:
+        Arc<functions::profile_fetcher::FetcherRouter<FPFLG, FPFLF>>,
     /// Handler for recording usage after execution.
     pub usage_handler: Arc<FUSG>,
 }
 
-impl<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF, FUSG>
-    Client<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF, FUSG>
+impl<
+    CTXEXT,
+    FENSLLM,
+    CUSG,
+    FENS,
+    FVVOTE,
+    FCVOTE,
+    VUSG,
+    FFNG,
+    FFNF,
+    FPFLG,
+    FPFLF,
+    FUSG,
+>
+    Client<
+        CTXEXT,
+        FENSLLM,
+        CUSG,
+        FENS,
+        FVVOTE,
+        FCVOTE,
+        VUSG,
+        FFNG,
+        FFNF,
+        FPFLG,
+        FPFLF,
+        FUSG,
+    >
 {
     /// Creates a new Function execution client.
     pub fn new(
@@ -321,8 +373,12 @@ impl<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF
                 VUSG,
             >,
         >,
-        function_fetcher: Arc<functions::function_fetcher::FetcherRouter<FFNG, FFNF>>,
-        profile_fetcher: Arc<functions::profile_fetcher::FetcherRouter<FPFLG, FPFLF>>,
+        function_fetcher: Arc<
+            functions::function_fetcher::FetcherRouter<FFNG, FFNF>,
+        >,
+        profile_fetcher: Arc<
+            functions::profile_fetcher::FetcherRouter<FPFLG, FPFLF>,
+        >,
         usage_handler: Arc<FUSG>,
     ) -> Self {
         Self {
@@ -336,8 +392,34 @@ impl<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF
     }
 }
 
-impl<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF, FUSG>
-    Client<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF, FUSG>
+impl<
+    CTXEXT,
+    FENSLLM,
+    CUSG,
+    FENS,
+    FVVOTE,
+    FCVOTE,
+    VUSG,
+    FFNG,
+    FFNF,
+    FPFLG,
+    FPFLF,
+    FUSG,
+>
+    Client<
+        CTXEXT,
+        FENSLLM,
+        CUSG,
+        FENS,
+        FVVOTE,
+        FCVOTE,
+        VUSG,
+        FFNG,
+        FFNF,
+        FPFLG,
+        FPFLF,
+        FUSG,
+    >
 where
     CTXEXT: ctx::ContextExt + Send + Sync + 'static,
     FENSLLM:
@@ -450,8 +532,34 @@ where
     }
 }
 
-impl<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF, FUSG>
-    Client<CTXEXT, FENSLLM, CUSG, FENS, FVVOTE, FCVOTE, VUSG, FFNG, FFNF, FPFLG, FPFLF, FUSG>
+impl<
+    CTXEXT,
+    FENSLLM,
+    CUSG,
+    FENS,
+    FVVOTE,
+    FCVOTE,
+    VUSG,
+    FFNG,
+    FFNF,
+    FPFLG,
+    FPFLF,
+    FUSG,
+>
+    Client<
+        CTXEXT,
+        FENSLLM,
+        CUSG,
+        FENS,
+        FVVOTE,
+        FCVOTE,
+        VUSG,
+        FFNG,
+        FFNF,
+        FPFLG,
+        FPFLF,
+        FUSG,
+    >
 where
     CTXEXT: ctx::ContextExt + Send + Sync + 'static,
     FENSLLM:
@@ -1702,7 +1810,10 @@ where
                     FtpStreamChunk::OutputChunk {
                         task_index,
                         output,
-                        retry_token: objectiveai::functions::executions::RetryToken(vec![None]),
+                        retry_token:
+                            objectiveai::functions::executions::RetryToken(
+                                vec![None],
+                            ),
                     }
                 })
                 .boxed()
@@ -1723,9 +1834,10 @@ where
                     FtpStreamChunk::OutputChunk {
                         task_index,
                         output,
-                        retry_token: objectiveai::functions::executions::RetryToken(
-                            vec![None; retry_len],
-                        ),
+                        retry_token:
+                            objectiveai::functions::executions::RetryToken(
+                                vec![None; retry_len],
+                            ),
                     }
                 })
                 .boxed()
@@ -1746,7 +1858,10 @@ where
                     FtpStreamChunk::OutputChunk {
                         task_index,
                         output,
-                        retry_token: objectiveai::functions::executions::RetryToken(vec![None]),
+                        retry_token:
+                            objectiveai::functions::executions::RetryToken(
+                                vec![None],
+                            ),
                     }
                 })
                 .boxed()
@@ -1773,9 +1888,10 @@ where
                     FtpStreamChunk::OutputChunk {
                         task_index,
                         output,
-                        retry_token: objectiveai::functions::executions::RetryToken(
-                            vec![None; retry_len],
-                        ),
+                        retry_token:
+                            objectiveai::functions::executions::RetryToken(
+                                vec![None; retry_len],
+                            ),
                     }
                 })
                 .boxed()
@@ -1940,9 +2056,11 @@ where
         // initialize output_input (stores validated FunctionOutputs directly)
         // and collect errors from task output expressions
         let tasks_len = ftp.tasks.len();
-        let mut output_input: Vec<Option<objectiveai::functions::expression::FunctionOutput>> =
-            Vec::with_capacity(tasks_len);
-        let mut task_output_errors: Vec<super::TaskOutputExpressionError> = Vec::new();
+        let mut output_input: Vec<
+            Option<objectiveai::functions::expression::FunctionOutput>,
+        > = Vec::with_capacity(tasks_len);
+        let mut task_output_errors: Vec<super::TaskOutputExpressionError> =
+            Vec::new();
 
         for (i, task) in ftp.tasks.iter().enumerate() {
             if task.as_ref().is_some_and(|task| task.len() == 0) {
@@ -2038,12 +2156,15 @@ where
 
         // identifiers
         let function =
-            ftp.full_function_id.map(|(remote, owner, repository, commit)| {
-                format!("{}/{}/{}/{}", remote, owner, repository, commit)
-            });
-        let profile = ftp.full_profile_id.map(|(remote, owner, repository, commit)| {
-            format!("{}/{}/{}/{}", remote, owner, repository, commit)
-        });
+            ftp.full_function_id
+                .map(|(remote, owner, repository, commit)| {
+                    format!("{}/{}/{}/{}", remote, owner, repository, commit)
+                });
+        let profile =
+            ftp.full_profile_id
+                .map(|(remote, owner, repository, commit)| {
+                    format!("{}/{}/{}/{}", remote, owner, repository, commit)
+                });
 
         // return stream, yielding chunks and updating retry token and output
         async_stream::stream! {
@@ -2348,6 +2469,7 @@ where
                         retry: retry_token.clone(),
                         from_cache: request_base.from_cache,
                         from_rng: request_base.from_rng,
+                        upstreams: request_base.upstreams.clone(),
                         messages: ftp.messages,
                         provider: request_base.provider,
                         ensemble: objectiveai::vector::completions::request::Ensemble::Provided(
@@ -2546,6 +2668,7 @@ where
                 ctx,
                 Arc::new(
                     objectiveai::chat::completions::request::ChatCompletionCreateParams {
+                        upstreams: request.base().upstreams.clone(),
                         messages: vec![objectiveai::chat::completions::request::Message::User(
                             objectiveai::chat::completions::request::UserMessage {
                                 content:
@@ -2793,7 +2916,9 @@ mod invert_output_tests {
     use rust_decimal::dec;
 
     fn empty_input() -> objectiveai::functions::expression::Input {
-        objectiveai::functions::expression::Input::Object(indexmap::IndexMap::new())
+        objectiveai::functions::expression::Input::Object(
+            indexmap::IndexMap::new(),
+        )
     }
 
     #[test]

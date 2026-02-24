@@ -18,3 +18,14 @@ pub enum Params {
         vector_pfx_indices: Arc<Vec<(String, usize)>>,
     },
 }
+
+impl Params {
+    pub fn upstreams(
+        &self,
+    ) -> Option<&[objectiveai::chat::completions::Upstream]> {
+        match self {
+            Params::Chat { request } => request.upstreams.as_deref(),
+            Params::Vector { request, .. } => request.upstreams.as_deref(),
+        }
+    }
+}

@@ -45,7 +45,7 @@ impl Client {
         super::Error,
     >{
         let mut errors = Vec::new();
-        let upstreams = super::upstreams(&ensemble_llm, request.clone());
+        let upstreams = super::upstreams(&ensemble_llm, &request);
 
         // try each upstream in order
         for &upstream in &upstreams {
@@ -116,7 +116,7 @@ impl Client {
     /// Creates a streaming completion with a specific upstream provider.
     async fn upstream_create_streaming(
         &self,
-        upstream: super::Upstream,
+        upstream: objectiveai::chat::completions::Upstream,
         id: String,
         byok: Option<String>,
         cost_multiplier: rust_decimal::Decimal,
@@ -175,7 +175,7 @@ impl Client {
     /// Creates a streaming chat completion with a specific upstream provider.
     fn create_streaming_for_chat(
         &self,
-        upstream: super::Upstream,
+        upstream: objectiveai::chat::completions::Upstream,
         id: String,
         byok: Option<&str>,
         cost_multiplier: rust_decimal::Decimal,
@@ -191,7 +191,12 @@ impl Client {
     > + Send
     + 'static{
         match upstream {
-            super::Upstream::OpenRouter => self
+            objectiveai::chat::completions::Upstream::Unknown => {
+                panic!(
+                    "`create_streaming_for_chat` called with `Unknown` upstream"
+                )
+            }
+            objectiveai::chat::completions::Upstream::OpenRouter => self
                 .openrouter_client
                 .create_streaming_for_chat(
                     id,
@@ -203,6 +208,9 @@ impl Client {
                     request,
                 )
                 .map_err(super::Error::from),
+            objectiveai::chat::completions::Upstream::ClaudeAgentSdk => {
+                unimplemented!()
+            }
         }
     }
 
@@ -211,7 +219,7 @@ impl Client {
     /// The LLM sees responses labeled with prefix keys and responds with its choice.
     fn create_streaming_for_vector(
         &self,
-        upstream: super::Upstream,
+        upstream: objectiveai::chat::completions::Upstream,
         id: String,
         byok: Option<&str>,
         cost_multiplier: rust_decimal::Decimal,
@@ -228,7 +236,12 @@ impl Client {
     > + Send
     + 'static{
         match upstream {
-            super::Upstream::OpenRouter => self
+            objectiveai::chat::completions::Upstream::Unknown => {
+                panic!(
+                    "`create_streaming_for_vector` called with `Unknown` upstream"
+                )
+            }
+            objectiveai::chat::completions::Upstream::OpenRouter => self
                 .openrouter_client
                 .create_streaming_for_vector(
                     id,
@@ -241,6 +254,9 @@ impl Client {
                     vector_pfx_indices,
                 )
                 .map_err(super::Error::from),
+            objectiveai::chat::completions::Upstream::ClaudeAgentSdk => {
+                unimplemented!()
+            }
         }
     }
 }

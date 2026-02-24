@@ -58,7 +58,7 @@ impl ChatCompletionChunk {
             usage: self
                 .usage
                 .map(|usage| usage.into_downstream(is_byok, cost_multiplier)),
-            upstream: objectiveai::chat::completions::response::Upstream::OpenRouter,
+            upstream: objectiveai::chat::completions::Upstream::OpenRouter,
             provider: self.provider,
         }
     }

@@ -1,8 +1,7 @@
 //! Chat completions client implementation.
 
-use futures::{StreamExt, TryStreamExt};
-
 use crate::{ctx, util::StreamOnce};
+use futures::{StreamExt, TryStreamExt};
 use std::{sync::Arc, time::Duration};
 
 /// Generates a unique response ID for a chat completion.
