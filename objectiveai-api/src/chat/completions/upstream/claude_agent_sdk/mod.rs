@@ -7,8 +7,8 @@ pub mod client;
 mod content_block;
 mod convert;
 pub mod error;
-mod event;
 mod js;
+pub mod response;
 mod sdk_message;
 
 pub use error::Error;

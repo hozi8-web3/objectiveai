@@ -41,8 +41,37 @@ impl objectiveai::error::StatusError for Error {
 
     fn message(&self) -> Option<serde_json::Value> {
         Some(serde_json::json!({
-            "kind": "claude_agent_sdk_error",
-            "message": self.to_string(),
+            "kind": "claude_agent_sdk",
+            "error": match self {
+                Error::Spawn(e) => serde_json::json!({
+                    "kind": "spawn",
+                    "error": e.to_string(),
+                }),
+                Error::Io(e) => serde_json::json!({
+                    "kind": "io",
+                    "error": e.to_string(),
+                }),
+                Error::Json(e) => serde_json::json!({
+                    "kind": "deserialization",
+                    "error": e.to_string(),
+                }),
+                Error::Stderr(msg) => serde_json::json!({
+                    "kind": "subprocess",
+                    "error": msg,
+                }),
+                Error::NoOutput => serde_json::json!({
+                    "kind": "no_output",
+                    "error": "no output from subprocess",
+                }),
+                Error::StreamTimeout => serde_json::json!({
+                    "kind": "stream_timeout",
+                    "error": "error fetching stream: timeout",
+                }),
+                Error::Convert(msg) => serde_json::json!({
+                    "kind": "convert",
+                    "error": msg,
+                }),
+            },
         }))
     }
 }

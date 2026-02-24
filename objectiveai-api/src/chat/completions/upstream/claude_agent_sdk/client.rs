@@ -1,12 +1,11 @@
 //! Claude Agent SDK client that spawns a Node.js subprocess for Anthropic models.
 
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use futures::Stream;
 use objectiveai::chat::completions::response::streaming::{
     ChatCompletionChunk, Choice, Delta, Object,
 };
-use objectiveai::chat::completions::response::{CostDetails, Usage};
 use rust_decimal::Decimal;
 use tokio::io::AsyncBufReadExt;
 use tokio::io::BufReader;
@@ -14,7 +13,7 @@ use tokio::process::Command;
 use tokio_stream::wrappers::LinesStream;
 use tokio_stream::StreamExt;
 
-use super::event::{parse_event, ParsedEvent};
+use super::response::event::{self, AnthropicUsage, ParsedEvent};
 
 /// Claude Agent SDK client.
 ///
@@ -30,6 +29,49 @@ fn transform_model(model: &str) -> String {
     stripped.replace('.', "-")
 }
 
+/// State captured from the init phase (message_start event).
+struct InitResult {
+    upstream_id: String,
+    upstream_model: String,
+    lines_stream: LinesStream<BufReader<tokio::process::ChildStdout>>,
+}
+
+/// Builds the output_format JSON string for structured output modes.
+fn output_format_json(
+    ensemble_llm: &objectiveai::ensemble_llm::EnsembleLlm,
+    vector_pfx_indices: &[(String, usize)],
+) -> Option<String> {
+    match ensemble_llm.base.output_mode {
+        objectiveai::ensemble_llm::OutputMode::JsonSchema => {
+            let think = ensemble_llm.base.synthetic_reasoning.unwrap_or(false);
+            let keys: Vec<String> = vector_pfx_indices.iter().map(|(k, _)| k.clone()).collect();
+            let rf = crate::vector::completions::ResponseKey::response_format(keys, think);
+            serde_json::to_string(&rf).ok()
+        }
+        objectiveai::ensemble_llm::OutputMode::ToolCall => {
+            let think = ensemble_llm.base.synthetic_reasoning.unwrap_or(false);
+            let keys: Vec<String> = vector_pfx_indices.iter().map(|(k, _)| k.clone()).collect();
+            let tool = crate::vector::completions::ResponseKey::tool(keys, think);
+            let objectiveai::chat::completions::request::Tool::Function { function } = &tool;
+            function
+                .parameters
+                .as_ref()
+                .and_then(|p| {
+                    serde_json::to_string(&serde_json::Value::Object(p.clone())).ok()
+                })
+        }
+        objectiveai::ensemble_llm::OutputMode::Instruction => None,
+    }
+}
+
+/// Returns the current Unix timestamp in seconds.
+fn now_unix() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+}
+
 impl Client {
     /// Creates a streaming chat completion via the Claude Agent SDK subprocess.
     pub fn create_streaming_for_chat(
@@ -42,7 +84,6 @@ impl Client {
         ensemble_llm: &objectiveai::ensemble_llm::EnsembleLlm,
         request: &objectiveai::chat::completions::request::ChatCompletionCreateParams,
     ) -> impl Stream<Item = Result<ChatCompletionChunk, super::Error>> + Send + 'static {
-        // Build merged messages using the shared prompt helper
         let messages = super::super::openrouter::request::prompt::new_for_chat(
             ensemble_llm.base.prefix_messages.as_deref(),
             &request.messages,
@@ -51,18 +92,17 @@ impl Client {
 
         let model = transform_model(&ensemble_llm.base.model);
         let ensemble_llm_id = ensemble_llm.id.clone();
+        let is_byok = _byok.is_some();
         let verbosity = ensemble_llm
             .base
             .verbosity
             .map(|v| verbosity_to_str(v).to_owned());
-        let reasoning_max_tokens = ensemble_llm
-            .base
-            .reasoning
-            .and_then(|r| r.max_tokens);
+        let reasoning_max_tokens = ensemble_llm.base.reasoning.and_then(|r| r.max_tokens);
 
         self.create_streaming_inner(
             id,
             ensemble_llm_id,
+            is_byok,
             cost_multiplier,
             first_chunk_timeout,
             other_chunk_timeout,
@@ -70,7 +110,7 @@ impl Client {
             model,
             verbosity,
             reasoning_max_tokens,
-            None, // no output_format for chat
+            None,
         )
     }
 
@@ -86,7 +126,6 @@ impl Client {
         request: &objectiveai::vector::completions::request::VectorCompletionCreateParams,
         vector_pfx_indices: &[(String, usize)],
     ) -> impl Stream<Item = Result<ChatCompletionChunk, super::Error>> + Send + 'static {
-        // Build merged messages using the shared vector prompt helper
         let messages = super::super::openrouter::request::prompt::new_for_vector(
             &request.responses,
             vector_pfx_indices,
@@ -98,45 +137,18 @@ impl Client {
 
         let model = transform_model(&ensemble_llm.base.model);
         let ensemble_llm_id = ensemble_llm.id.clone();
+        let is_byok = _byok.is_some();
         let verbosity = ensemble_llm
             .base
             .verbosity
             .map(|v| verbosity_to_str(v).to_owned());
-        let reasoning_max_tokens = ensemble_llm
-            .base
-            .reasoning
-            .and_then(|r| r.max_tokens);
-
-        // Build output_format for structured output modes
-        let output_format_json = match ensemble_llm.base.output_mode {
-            objectiveai::ensemble_llm::OutputMode::JsonSchema => {
-                let think = ensemble_llm.base.synthetic_reasoning.unwrap_or(false);
-                let keys: Vec<String> =
-                    vector_pfx_indices.iter().map(|(k, _)| k.clone()).collect();
-                let rf = crate::vector::completions::ResponseKey::response_format(
-                    keys, think,
-                );
-                serde_json::to_string(&rf).ok()
-            }
-            objectiveai::ensemble_llm::OutputMode::ToolCall => {
-                let think = ensemble_llm.base.synthetic_reasoning.unwrap_or(false);
-                let keys: Vec<String> =
-                    vector_pfx_indices.iter().map(|(k, _)| k.clone()).collect();
-                let tool =
-                    crate::vector::completions::ResponseKey::tool(keys, think);
-                // Extract the function parameters as the output format
-                let objectiveai::chat::completions::request::Tool::Function { function } = &tool;
-                function
-                    .parameters
-                    .as_ref()
-                    .and_then(|p| serde_json::to_string(&serde_json::Value::Object(p.clone())).ok())
-            }
-            objectiveai::ensemble_llm::OutputMode::Instruction => None,
-        };
+        let reasoning_max_tokens = ensemble_llm.base.reasoning.and_then(|r| r.max_tokens);
+        let fmt = output_format_json(ensemble_llm, vector_pfx_indices);
 
         self.create_streaming_inner(
             id,
             ensemble_llm_id,
+            is_byok,
             cost_multiplier,
             first_chunk_timeout,
             other_chunk_timeout,
@@ -144,15 +156,17 @@ impl Client {
             model,
             verbosity,
             reasoning_max_tokens,
-            output_format_json,
+            fmt,
         )
     }
 
     /// Internal streaming implementation shared by chat and vector.
+    #[allow(clippy::too_many_arguments)]
     fn create_streaming_inner(
         &self,
         id: String,
         ensemble_llm_id: String,
+        is_byok: bool,
         cost_multiplier: Decimal,
         first_chunk_timeout: Duration,
         other_chunk_timeout: Duration,
@@ -164,14 +178,13 @@ impl Client {
     ) -> impl Stream<Item = Result<ChatCompletionChunk, super::Error>> + Send + 'static {
         async_stream::stream! {
             // Convert ObjectiveAI messages to SDK format
-            let (system_prompt, sdk_message) =
-                match super::convert::convert(&messages) {
-                    Ok(result) => result,
-                    Err(e) => {
-                        yield Err(super::Error::Convert(e));
-                        return;
-                    }
-                };
+            let (system_prompt, sdk_message) = match super::convert::convert(&messages) {
+                Ok(result) => result,
+                Err(e) => {
+                    yield Err(super::Error::Convert(e));
+                    return;
+                }
+            };
 
             let message_json = match serde_json::to_string(&sdk_message) {
                 Ok(json) => json,
@@ -219,61 +232,48 @@ impl Client {
             // Read stdout lines
             let stdout = child.stdout.take().expect("stdout was piped");
             let reader = BufReader::new(stdout);
-            let mut lines_stream = LinesStream::new(reader.lines());
+            let lines_stream = LinesStream::new(reader.lines());
 
-            // Wait for message_start event (with first_chunk_timeout)
-            #[allow(unused_assignments)]
-            let mut upstream_id = String::new();
-            #[allow(unused_assignments)]
-            let mut upstream_model = String::new();
+            let created = now_unix();
 
-            loop {
-                match tokio::time::timeout(first_chunk_timeout, lines_stream.next()).await {
-                    Err(_) => {
-                        yield Err(super::Error::StreamTimeout);
-                        return;
-                    }
-                    Ok(None) => {
-                        let stderr_output = stderr_handle.await.unwrap_or_default();
-                        if !stderr_output.is_empty() {
-                            yield Err(super::Error::Stderr(stderr_output));
-                        } else {
-                            yield Err(super::Error::NoOutput);
-                        }
-                        return;
-                    }
-                    Ok(Some(Err(e))) => {
-                        yield Err(super::Error::Io(e));
-                        return;
-                    }
-                    Ok(Some(Ok(line))) => {
-                        let line = line.trim().to_owned();
-                        if line.is_empty() {
-                            continue;
-                        }
-
-                        let value: serde_json::Value = match serde_json::from_str(&line) {
-                            Ok(v) => v,
-                            Err(e) => {
-                                yield Err(super::Error::Json(e));
-                                return;
-                            }
-                        };
-
-                        if let Some(ParsedEvent::MessageStart { id: uid, model: umodel }) = parse_event(&value) {
-                            upstream_id = uid;
-                            upstream_model = umodel;
-                            break;
-                        }
-                    }
+            // Wait for message_start event
+            let init = match wait_for_init(lines_stream, first_chunk_timeout, &stderr_handle).await {
+                Ok(init) => init,
+                Err(e) => {
+                    let _ = child.kill().await;
+                    yield Err(e);
+                    return;
                 }
-            }
+            };
+
+            let upstream_id = init.upstream_id;
+            let upstream_model = init.upstream_model;
+            let mut lines_stream = init.lines_stream;
+
+            // Track accumulated token usage from MessageDelta events
+            let mut last_usage: Option<AnthropicUsage> = None;
 
             // Stream remaining events
             loop {
                 match tokio::time::timeout(other_chunk_timeout, lines_stream.next()).await {
                     Err(_) => {
-                        yield Err(super::Error::StreamTimeout);
+                        let _ = child.kill().await;
+                        // Try to collect stderr for context
+                        let stderr_ctx = tokio::time::timeout(
+                            Duration::from_secs(2),
+                            stderr_handle,
+                        )
+                        .await
+                        .ok()
+                        .and_then(|r| r.ok())
+                        .unwrap_or_default();
+                        if stderr_ctx.is_empty() {
+                            yield Err(super::Error::StreamTimeout);
+                        } else {
+                            yield Err(super::Error::Stderr(
+                                format!("stream timeout; stderr: {stderr_ctx}"),
+                            ));
+                        }
                         return;
                     }
                     Ok(None) => {
@@ -281,6 +281,7 @@ impl Client {
                         return;
                     }
                     Ok(Some(Err(e))) => {
+                        let _ = child.kill().await;
                         yield Err(super::Error::Io(e));
                         return;
                     }
@@ -290,87 +291,146 @@ impl Client {
                             continue;
                         }
 
-                        let value: serde_json::Value = match serde_json::from_str(trimmed) {
-                            Ok(v) => v,
+                        let parsed = match event::parse_line(trimmed) {
+                            Ok(Some(event)) => event,
+                            Ok(None) => continue,
                             Err(e) => {
+                                let _ = child.kill().await;
                                 yield Err(super::Error::Json(e));
                                 return;
                             }
                         };
 
-                        match parse_event(&value) {
-                            Some(ParsedEvent::TextDelta(text)) => {
+                        match parsed {
+                            ParsedEvent::TextDelta(text) => {
                                 yield Ok(make_chunk(
                                     &id,
                                     &upstream_id,
                                     &ensemble_llm_id,
                                     &upstream_model,
+                                    created,
                                     Delta { content: Some(text), ..Default::default() },
                                     None,
                                     None,
                                     None,
                                 ));
                             }
-                            Some(ParsedEvent::ThinkingDelta(thinking)) => {
+                            ParsedEvent::ThinkingDelta(thinking) => {
                                 yield Ok(make_chunk(
                                     &id,
                                     &upstream_id,
                                     &ensemble_llm_id,
                                     &upstream_model,
+                                    created,
                                     Delta { reasoning: Some(thinking), ..Default::default() },
                                     None,
                                     None,
                                     None,
                                 ));
                             }
-                            Some(ParsedEvent::MessageDelta { stop_reason, usage }) => {
+                            ParsedEvent::MessageDelta { stop_reason, usage } => {
+                                // Accumulate usage for merging with the Result event
+                                if usage.is_some() {
+                                    last_usage = usage;
+                                }
                                 yield Ok(make_chunk(
                                     &id,
                                     &upstream_id,
                                     &ensemble_llm_id,
                                     &upstream_model,
+                                    created,
                                     Delta::default(),
                                     stop_reason,
-                                    usage,
+                                    None,
                                     None,
                                 ));
                             }
-                            Some(ParsedEvent::MessageStop) => {
-                                // Don't end yet — wait for the result event
+                            ParsedEvent::MessageStop => {
+                                // Wait for the Result event
                                 continue;
                             }
-                            Some(ParsedEvent::Result { total_cost_usd, service_tier }) => {
-                                let cost_decimal = total_cost_usd
+                            ParsedEvent::Result { total_cost_usd, service_tier } => {
+                                let cost = total_cost_usd
                                     .and_then(|c| Decimal::try_from(c).ok())
                                     .unwrap_or_default();
-                                let adjusted_cost = cost_decimal * cost_multiplier;
+
+                                // Merge accumulated token usage with cost
+                                let usage = last_usage
+                                    .take()
+                                    .map(|u| u.into_downstream(cost, is_byok, cost_multiplier))
+                                    .unwrap_or_else(|| {
+                                        // No token usage available — emit cost-only usage
+                                        AnthropicUsage {
+                                            input_tokens: 0,
+                                            output_tokens: 0,
+                                            cache_creation_input_tokens: 0,
+                                            cache_read_input_tokens: 0,
+                                        }
+                                        .into_downstream(cost, is_byok, cost_multiplier)
+                                    });
+
                                 let mut chunk = make_chunk(
                                     &id,
                                     &upstream_id,
                                     &ensemble_llm_id,
                                     &upstream_model,
+                                    created,
                                     Delta::default(),
                                     None,
-                                    Some(Usage {
-                                        cost: adjusted_cost,
-                                        total_cost: adjusted_cost,
-                                        cost_details: Some(CostDetails {
-                                            upstream_inference_cost: cost_decimal,
-                                            upstream_upstream_inference_cost: cost_decimal,
-                                        }),
-                                        ..Default::default()
-                                    }),
+                                    Some(usage),
                                     None,
                                 );
                                 chunk.service_tier = service_tier;
                                 yield Ok(chunk);
                                 return;
                             }
-                            Some(ParsedEvent::MessageStart { .. }) | None => {
+                            ParsedEvent::MessageStart { .. } => {
                                 continue;
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/// Reads lines until a `message_start` event is received.
+async fn wait_for_init(
+    mut lines_stream: LinesStream<BufReader<tokio::process::ChildStdout>>,
+    timeout: Duration,
+    stderr_handle: &tokio::task::JoinHandle<String>,
+) -> Result<InitResult, super::Error> {
+    loop {
+        match tokio::time::timeout(timeout, lines_stream.next()).await {
+            Err(_) => return Err(super::Error::StreamTimeout),
+            Ok(None) => {
+                // Process ended before message_start — check stderr
+                // We can't await the handle since we only have a reference,
+                // but we can check if stderr has finished
+                if stderr_handle.is_finished() {
+                    // Safety: we just checked is_finished
+                    // But we can't consume the handle. Just report NoOutput.
+                }
+                return Err(super::Error::NoOutput);
+            }
+            Ok(Some(Err(e))) => return Err(super::Error::Io(e)),
+            Ok(Some(Ok(line))) => {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+
+                match event::parse_line(trimmed) {
+                    Ok(Some(ParsedEvent::MessageStart { id, model })) => {
+                        return Ok(InitResult {
+                            upstream_id: id,
+                            upstream_model: model,
+                            lines_stream,
+                        });
+                    }
+                    Ok(_) => continue,
+                    Err(e) => return Err(super::Error::Json(e)),
                 }
             }
         }
@@ -383,9 +443,10 @@ fn make_chunk(
     upstream_id: &str,
     model: &str,
     upstream_model: &str,
+    created: u64,
     delta: Delta,
     finish_reason: Option<objectiveai::chat::completions::response::FinishReason>,
-    usage: Option<Usage>,
+    usage: Option<objectiveai::chat::completions::response::Usage>,
     service_tier: Option<String>,
 ) -> ChatCompletionChunk {
     ChatCompletionChunk {
@@ -393,7 +454,7 @@ fn make_chunk(
         upstream_id: upstream_id.to_owned(),
         model: model.to_owned(),
         upstream_model: upstream_model.to_owned(),
-        created: 0,
+        created,
         object: Object::default(),
         choices: vec![Choice {
             delta,
