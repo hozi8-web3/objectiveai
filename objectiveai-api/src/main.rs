@@ -34,8 +34,10 @@ struct Config {
         default = "https://openrouter.ai/api/v1"
     )]
     openrouter_api_base: String,
-    #[envconfig(from = "OPENROUTER_API_KEY", default = "")]
-    openrouter_api_key: String,
+    #[envconfig(from = "OPENROUTER_API_KEY")]
+    openrouter_api_key: Option<String>,
+    #[envconfig(from = "CLAUDE_AGENT_SDK", default = "0")]
+    claude_agent_sdk: String,
     #[envconfig(from = "USER_AGENT")]
     user_agent: Option<String>,
     #[envconfig(from = "HTTP_REFERER")]
@@ -88,6 +90,7 @@ async fn main() {
         objectiveai_api_key,
         openrouter_api_base,
         openrouter_api_key,
+        claude_agent_sdk,
         user_agent,
         http_referer,
         x_title,
@@ -132,15 +135,21 @@ async fn main() {
         ensemble_llm_fetcher.clone(),
         Arc::new(chat::completions::usage_handler::LogUsageHandler),
         chat::completions::upstream::Client::new(
-            Some(chat::completions::upstream::openrouter::Client::new(
-                http_client,
-                openrouter_api_base,
-                openrouter_api_key,
-                user_agent.clone(),
-                x_title.clone(),
-                http_referer.clone(),
-            )),
-            Some(chat::completions::upstream::claude_agent_sdk::client::Client::new()),
+            openrouter_api_key.map(|key| {
+                chat::completions::upstream::openrouter::Client::new(
+                    http_client,
+                    openrouter_api_base,
+                    key,
+                    user_agent.clone(),
+                    x_title.clone(),
+                    http_referer.clone(),
+                )
+            }),
+            if !matches!(claude_agent_sdk.to_lowercase().as_str(), "0" | "false") {
+                Some(chat::completions::upstream::claude_agent_sdk::client::Client::new())
+            } else {
+                None
+            },
         ),
         std::time::Duration::from_millis(
             chat_completions_backoff_current_interval,
