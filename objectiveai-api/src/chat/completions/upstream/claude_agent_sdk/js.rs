@@ -15,30 +15,27 @@ pub fn build_js(
     reasoning_max_tokens: Option<u64>,
     output_format_json: Option<&str>,
 ) -> String {
-    let system_prompt_js = match system_prompt {
-        Some(s) => {
-            let escaped = s
-                .replace('\\', "\\\\")
-                .replace('`', "\\`")
-                .replace('$', "\\$");
-            format!("opts.systemPrompt = `{escaped}`;")
-        }
-        None => String::new(),
-    };
-
-    let effort_js = match verbosity {
-        Some(v) => format!("opts.effort = \"{v}\";"),
-        None => String::new(),
-    };
-
-    let max_thinking_tokens_js = match reasoning_max_tokens {
-        Some(t) => format!("opts.maxThinkingTokens = {t};"),
-        None => String::new(),
-    };
-
-    let output_format_js = match output_format_json {
-        Some(schema) => format!("opts.outputFormat = {schema};"),
-        None => String::new(),
+    let mut opts_extra = Vec::new();
+    if let Some(s) = system_prompt {
+        let escaped = s
+            .replace('\\', "\\\\")
+            .replace('`', "\\`")
+            .replace('$', "\\$");
+        opts_extra.push(format!("    opts.systemPrompt = `{escaped}`;"));
+    }
+    if let Some(v) = verbosity {
+        opts_extra.push(format!("    opts.effort = \"{v}\";"));
+    }
+    if let Some(t) = reasoning_max_tokens {
+        opts_extra.push(format!("    opts.maxThinkingTokens = {t};"));
+    }
+    if let Some(schema) = output_format_json {
+        opts_extra.push(format!("    opts.outputFormat = {schema};"));
+    }
+    let opts_extra_js = if opts_extra.is_empty() {
+        String::new()
+    } else {
+        format!("\n{}", opts_extra.join("\n"))
     };
 
     format!(
@@ -59,11 +56,7 @@ const {{ query }} = require(process.env.CLAUDE_AGENT_SDK_PATH || "@anthropic-ai/
       allowedTools: [],
       model: "{model}",
       includePartialMessages: true,
-    }};
-    {system_prompt_js}
-    {effort_js}
-    {max_thinking_tokens_js}
-    {output_format_js}
+    }};{opts_extra_js}
 
     const stream = query({{ prompt: messages(), options: opts }});
 
