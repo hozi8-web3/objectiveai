@@ -164,6 +164,7 @@ impl Client {
             verbosity,
             reasoning_max_tokens,
             None,
+            false,
         )
     }
 
@@ -213,6 +214,7 @@ impl Client {
             verbosity,
             reasoning_max_tokens,
             fmt,
+            true,
         )
     }
 
@@ -231,6 +233,7 @@ impl Client {
         verbosity: Option<String>,
         reasoning_max_tokens: Option<u64>,
         output_format_json: Option<String>,
+        is_vector: bool,
     ) -> impl Stream<Item = Result<ChatCompletionChunk, super::Error>> + Send + 'static
     {
         let sdk_path = self.sdk_path().map(|s| s.to_owned());
@@ -328,6 +331,14 @@ impl Client {
             // Key: content block index, Value: tool call index (0-based).
             let mut tool_call_index_map: std::collections::HashMap<u64, u64> = std::collections::HashMap::new();
 
+            // In vector mode with outputFormat, buffer content text and re-emit as
+            // reasoning once a tool call arrives. After a tool call is seen, any
+            // further content is yielded as reasoning immediately. If no tool call
+            // happens, the buffer is flushed as normal content.
+            let buffer_content = is_vector && output_format_json.is_some();
+            let mut content_buffer = String::new();
+            let mut tool_seen = false;
+
             // Stream remaining events
             loop {
                 match tokio::time::timeout(other_chunk_timeout, lines_stream.next()).await {
@@ -378,9 +389,18 @@ impl Client {
 
                         match parsed {
                             ParsedEvent::ToolUseStart { index: block_index, id: tool_id, name } => {
+                                tool_seen = true;
                                 // Assign a new 0-based tool call index for this content block
                                 let tc_index = tool_call_index_map.len() as u64;
                                 tool_call_index_map.insert(block_index, tc_index);
+
+                                // Flush buffered content as reasoning in the same chunk
+                                let reasoning = if !content_buffer.is_empty() {
+                                    Some(std::mem::take(&mut content_buffer))
+                                } else {
+                                    None
+                                };
+
                                 yield Ok(make_chunk(
                                     &id,
                                     &upstream_id,
@@ -388,6 +408,7 @@ impl Client {
                                     &upstream_model,
                                     created,
                                     Delta {
+                                        reasoning,
                                         tool_calls: Some(vec![ToolCall {
                                             index: tc_index,
                                             r#type: Some(ToolCallType::Function),
@@ -431,17 +452,36 @@ impl Client {
                                 ));
                             }
                             ParsedEvent::TextDelta(text) => {
-                                yield Ok(make_chunk(
-                                    &id,
-                                    &upstream_id,
-                                    &ensemble_llm_id,
-                                    &upstream_model,
-                                    created,
-                                    Delta { content: Some(text), ..Default::default() },
-                                    None,
-                                    None,
-                                    None,
-                                ));
+                                if buffer_content && !tool_seen {
+                                    // Buffer content until we know if a tool call follows
+                                    content_buffer.push_str(&text);
+                                } else if buffer_content && tool_seen {
+                                    // After a tool call, yield content as reasoning
+                                    yield Ok(make_chunk(
+                                        &id,
+                                        &upstream_id,
+                                        &ensemble_llm_id,
+                                        &upstream_model,
+                                        created,
+                                        Delta { reasoning: Some(text), ..Default::default() },
+                                        None,
+                                        None,
+                                        None,
+                                    ));
+                                } else {
+                                    // No output format — yield content normally
+                                    yield Ok(make_chunk(
+                                        &id,
+                                        &upstream_id,
+                                        &ensemble_llm_id,
+                                        &upstream_model,
+                                        created,
+                                        Delta { content: Some(text), ..Default::default() },
+                                        None,
+                                        None,
+                                        None,
+                                    ));
+                                }
                             }
                             ParsedEvent::ThinkingDelta(thinking) => {
                                 yield Ok(make_chunk(
@@ -461,6 +501,22 @@ impl Client {
                                 if usage.is_some() {
                                     last_usage = usage;
                                 }
+
+                                // If no tool call happened, flush buffered content as content
+                                if !tool_seen && !content_buffer.is_empty() {
+                                    yield Ok(make_chunk(
+                                        &id,
+                                        &upstream_id,
+                                        &ensemble_llm_id,
+                                        &upstream_model,
+                                        created,
+                                        Delta { content: Some(std::mem::take(&mut content_buffer)), ..Default::default() },
+                                        None,
+                                        None,
+                                        None,
+                                    ));
+                                }
+
                                 yield Ok(make_chunk(
                                     &id,
                                     &upstream_id,
