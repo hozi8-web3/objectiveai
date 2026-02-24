@@ -49,7 +49,7 @@ fn output_format_json(
             let rf = crate::vector::completions::ResponseKey::response_format(
                 keys, think,
             );
-            serde_json::to_string(&rf).ok()
+            Some(serde_json::to_string(&rf).unwrap())
         }
         objectiveai::ensemble_llm::OutputMode::ToolCall => {
             let think = ensemble_llm.base.synthetic_reasoning.unwrap_or(false);
@@ -60,9 +60,9 @@ fn output_format_json(
             let objectiveai::chat::completions::request::Tool::Function {
                 function,
             } = &tool;
-            function.parameters.as_ref().and_then(|p| {
+            function.parameters.as_ref().map(|p| {
                 serde_json::to_string(&serde_json::Value::Object(p.clone()))
-                    .ok()
+                    .unwrap()
             })
         }
         objectiveai::ensemble_llm::OutputMode::Instruction => None,
