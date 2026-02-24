@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VectorCompletionCreateParams {
     // --- Caching and retry options ---
-
     /// If present, reuses votes from a previous request with this ID.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub retry: Option<String>,
@@ -23,7 +22,9 @@ pub struct VectorCompletionCreateParams {
     pub from_rng: Option<bool>,
 
     // --- Core configuration ---
-
+    /// Available upstreams for this request
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upstreams: Option<Vec<crate::chat::completions::Upstream>>,
     /// The conversation messages (the prompt).
     pub messages: Vec<chat::completions::request::Message>,
     /// Provider routing preferences.
@@ -51,7 +52,6 @@ pub struct VectorCompletionCreateParams {
     pub responses: Vec<chat::completions::request::RichContent>,
 
     // --- Retry configuration ---
-
     /// Maximum elapsed time (ms) for exponential backoff retries.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub backoff_max_elapsed_time: Option<u64>,

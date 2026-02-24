@@ -164,6 +164,7 @@ const schemaRefs: string[] = [
   "EnsembleLlmProvider",
   "CompletionProvider",
   "QualityVectorFunctionInputSchema",
+  "Upstream",
 ];
 
 const propertyRefsBySchema = new WeakMap<z.ZodType, Record<string, string>>();

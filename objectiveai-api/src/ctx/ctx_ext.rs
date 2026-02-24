@@ -1,7 +1,5 @@
 //! Context extension trait for per-request customization.
 
-use crate::chat;
-
 /// Extension trait for providing per-request customization.
 ///
 /// Implementations can provide BYOK (Bring Your Own Key) API keys
@@ -15,6 +13,6 @@ pub trait ContextExt {
     /// for this upstream, in which case the locally configured key will be used.
     async fn get_byok(
         &self,
-        upstream: chat::completions::upstream::Upstream,
+        upstream: objectiveai::chat::completions::Upstream,
     ) -> Result<Option<String>, objectiveai::error::ResponseError>;
 }

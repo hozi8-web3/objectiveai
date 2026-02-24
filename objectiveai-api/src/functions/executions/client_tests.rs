@@ -21,7 +21,7 @@ struct MockContextExt;
 impl ctx::ContextExt for MockContextExt {
     async fn get_byok(
         &self,
-        _upstream: chat::completions::upstream::Upstream,
+        _upstream: objectiveai::chat::completions::Upstream,
     ) -> Result<Option<String>, objectiveai::error::ResponseError> {
         Ok(None)
     }
@@ -112,7 +112,9 @@ impl vector::completions::cache_vote_fetcher::Fetcher<MockContextExt>
 struct MockFunctionFetcher;
 
 #[async_trait::async_trait]
-impl functions::function_fetcher::Fetcher<MockContextExt> for MockFunctionFetcher {
+impl functions::function_fetcher::Fetcher<MockContextExt>
+    for MockFunctionFetcher
+{
     async fn fetch(
         &self,
         _ctx: ctx::Context<MockContextExt>,
@@ -132,7 +134,9 @@ impl functions::function_fetcher::Fetcher<MockContextExt> for MockFunctionFetche
 struct MockProfileFetcher;
 
 #[async_trait::async_trait]
-impl functions::profile_fetcher::Fetcher<MockContextExt> for MockProfileFetcher {
+impl functions::profile_fetcher::Fetcher<MockContextExt>
+    for MockProfileFetcher
+{
     async fn fetch(
         &self,
         _ctx: ctx::Context<MockContextExt>,
@@ -192,7 +196,9 @@ impl vector::completions::usage_handler::UsageHandler<MockContextExt>
 struct MockFunctionUsageHandler;
 
 #[async_trait::async_trait]
-impl super::usage_handler::UsageHandler<MockContextExt> for MockFunctionUsageHandler {
+impl super::usage_handler::UsageHandler<MockContextExt>
+    for MockFunctionUsageHandler
+{
     async fn handle_usage(
         &self,
         _ctx: ctx::Context<MockContextExt>,
@@ -249,21 +255,24 @@ fn create_test_context() -> ctx::Context<MockContextExt> {
 
 /// Creates a test chat completions client with mock dependencies.
 fn create_test_chat_client() -> Arc<TestChatClient> {
-    let ensemble_llm_fetcher = Arc::new(
-        ensemble_llm::fetcher::CachingFetcher::new(Arc::new(MockEnsembleLlmFetcher)),
-    );
+    let ensemble_llm_fetcher =
+        Arc::new(ensemble_llm::fetcher::CachingFetcher::new(Arc::new(
+            MockEnsembleLlmFetcher,
+        )));
     let usage_handler = Arc::new(MockChatUsageHandler);
 
     // Create OpenRouter client with dummy values (won't be used since from_rng=true)
-    let openrouter_client = chat::completions::upstream::openrouter::Client::new(
-        reqwest::Client::new(),
-        "https://openrouter.ai/api/v1".to_string(),
-        "dummy-api-key".to_string(),
-        None, // user_agent
-        None, // x_title
-        None, // referer
-    );
-    let upstream_client = chat::completions::upstream::Client::new(openrouter_client);
+    let openrouter_client =
+        chat::completions::upstream::openrouter::Client::new(
+            reqwest::Client::new(),
+            "https://openrouter.ai/api/v1".to_string(),
+            "dummy-api-key".to_string(),
+            None, // user_agent
+            None, // x_title
+            None, // referer
+        );
+    let upstream_client =
+        chat::completions::upstream::Client::new(Some(openrouter_client), None);
 
     Arc::new(chat::completions::Client::new(
         ensemble_llm_fetcher,
@@ -282,9 +291,9 @@ fn create_test_chat_client() -> Arc<TestChatClient> {
 fn create_test_vector_client(
     chat_client: Arc<TestChatClient>,
 ) -> Arc<TestVectorClient> {
-    let ensemble_fetcher = Arc::new(ensemble::fetcher::CachingFetcher::new(Arc::new(
-        MockEnsembleFetcher,
-    )));
+    let ensemble_fetcher = Arc::new(ensemble::fetcher::CachingFetcher::new(
+        Arc::new(MockEnsembleFetcher),
+    ));
     let completion_votes_fetcher = Arc::new(MockCompletionVotesFetcher);
     let cache_vote_fetcher = Arc::new(MockCacheVoteFetcher);
     let usage_handler = Arc::new(MockVectorUsageHandler);
@@ -303,17 +312,19 @@ fn create_test_function_client(
     chat_client: Arc<TestChatClient>,
     vector_client: Arc<TestVectorClient>,
 ) -> Arc<TestFunctionClient> {
-    let ensemble_fetcher = Arc::new(ensemble::fetcher::CachingFetcher::new(Arc::new(
-        MockEnsembleFetcher,
-    )));
-    let function_fetcher = Arc::new(functions::function_fetcher::FetcherRouter::new(
-        Arc::new(MockFunctionFetcher),
-        Arc::new(MockFunctionFetcher),
+    let ensemble_fetcher = Arc::new(ensemble::fetcher::CachingFetcher::new(
+        Arc::new(MockEnsembleFetcher),
     ));
-    let profile_fetcher = Arc::new(functions::profile_fetcher::FetcherRouter::new(
-        Arc::new(MockProfileFetcher),
-        Arc::new(MockProfileFetcher),
-    ));
+    let function_fetcher =
+        Arc::new(functions::function_fetcher::FetcherRouter::new(
+            Arc::new(MockFunctionFetcher),
+            Arc::new(MockFunctionFetcher),
+        ));
+    let profile_fetcher =
+        Arc::new(functions::profile_fetcher::FetcherRouter::new(
+            Arc::new(MockProfileFetcher),
+            Arc::new(MockProfileFetcher),
+        ));
     let usage_handler = Arc::new(MockFunctionUsageHandler);
 
     Arc::new(super::Client::new(
@@ -327,7 +338,8 @@ fn create_test_function_client(
 }
 
 /// Creates a simple inline ensemble with a single LLM.
-fn create_simple_ensemble() -> objectiveai::vector::completions::request::Ensemble {
+fn create_simple_ensemble()
+-> objectiveai::vector::completions::request::Ensemble {
     objectiveai::vector::completions::request::Ensemble::Provided(
         objectiveai::ensemble::EnsembleBase {
             llms: vec![objectiveai::ensemble_llm::EnsembleLlmBaseWithFallbacksAndCount {
@@ -502,6 +514,7 @@ mod tests {
                     retry_token: None,
                     from_cache: None,
                     from_rng: Some(true), // Use RNG instead of network calls
+                    upstreams: None,
                     reasoning: None,
                     strategy: None,
                     input: empty_input(),
@@ -519,14 +532,24 @@ mod tests {
             .create_unary_handle_usage(ctx, request)
             .await;
 
-        assert!(result.is_ok(), "Function execution should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Function execution should succeed: {:?}",
+            result.err()
+        );
 
         let response = result.unwrap();
 
         // Verify the output is a vector that sums to approximately 1
         match &response.output {
-            objectiveai::functions::expression::FunctionOutput::Vector(scores) => {
-                assert_eq!(scores.len(), 2, "Should have 2 scores for 2 responses");
+            objectiveai::functions::expression::FunctionOutput::Vector(
+                scores,
+            ) => {
+                assert_eq!(
+                    scores.len(),
+                    2,
+                    "Should have 2 scores for 2 responses"
+                );
                 let sum: Decimal = scores.iter().cloned().sum();
                 assert!(
                     sum >= Decimal::new(99, 2) && sum <= Decimal::new(101, 2),
@@ -556,6 +579,7 @@ mod tests {
                     retry_token: None,
                     from_cache: None,
                     from_rng: Some(true),
+                    upstreams: None,
                     reasoning: None,
                     strategy: None,
                     input: empty_input(),
@@ -573,13 +597,19 @@ mod tests {
             .create_unary_handle_usage(ctx, request)
             .await;
 
-        assert!(result.is_ok(), "Function execution should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Function execution should succeed: {:?}",
+            result.err()
+        );
 
         let response = result.unwrap();
 
         // Verify the output is a scalar between 0 and 1
         match &response.output {
-            objectiveai::functions::expression::FunctionOutput::Scalar(score) => {
+            objectiveai::functions::expression::FunctionOutput::Scalar(
+                score,
+            ) => {
                 assert!(
                     *score >= Decimal::ZERO && *score <= Decimal::ONE,
                     "Scalar score should be between 0 and 1, got {}",
@@ -608,6 +638,7 @@ mod tests {
                     retry_token: None,
                     from_cache: None,
                     from_rng: Some(true),
+                    upstreams: None,
                     reasoning: None,
                     strategy: None,
                     input: empty_input(),
@@ -626,7 +657,11 @@ mod tests {
             .create_streaming_handle_usage(ctx, request)
             .await;
 
-        assert!(stream_result.is_ok(), "Streaming should start: {:?}", stream_result.err());
+        assert!(
+            stream_result.is_ok(),
+            "Streaming should start: {:?}",
+            stream_result.err()
+        );
 
         let mut stream = stream_result.unwrap();
         let mut chunks = Vec::new();
@@ -648,7 +683,9 @@ mod tests {
 
         // Verify the output
         match &response.output {
-            objectiveai::functions::expression::FunctionOutput::Vector(scores) => {
+            objectiveai::functions::expression::FunctionOutput::Vector(
+                scores,
+            ) => {
                 assert_eq!(scores.len(), 2, "Should have 2 scores");
             }
             other => panic!("Expected vector output, got {:?}", other),
@@ -783,6 +820,7 @@ mod tests {
                     retry_token: None,
                     from_cache: None,
                     from_rng: Some(true),
+                    upstreams: None,
                     reasoning: None,
                     strategy: None,
                     input: empty_input(),
@@ -800,13 +838,19 @@ mod tests {
             .create_unary_handle_usage(ctx, request)
             .await;
 
-        assert!(result.is_ok(), "Multi-task function should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Multi-task function should succeed: {:?}",
+            result.err()
+        );
 
         let response = result.unwrap();
 
         // Verify the output is a valid vector
         match &response.output {
-            objectiveai::functions::expression::FunctionOutput::Vector(scores) => {
+            objectiveai::functions::expression::FunctionOutput::Vector(
+                scores,
+            ) => {
                 assert_eq!(scores.len(), 2, "Should have 2 scores");
                 let sum: Decimal = scores.iter().cloned().sum();
                 assert!(
@@ -882,6 +926,7 @@ mod tests {
                     retry_token: None,
                     from_cache: None,
                     from_rng: Some(true),
+                    upstreams: None,
                     reasoning: None,
                     strategy: None,
                     input: empty_input(),
@@ -899,23 +944,25 @@ mod tests {
             .create_unary_handle_usage(ctx, request)
             .await;
 
-        assert!(result.is_ok(), "Multi-LLM ensemble should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Multi-LLM ensemble should succeed: {:?}",
+            result.err()
+        );
 
         let response = result.unwrap();
 
         // Verify the output
         match &response.output {
-            objectiveai::functions::expression::FunctionOutput::Vector(scores) => {
+            objectiveai::functions::expression::FunctionOutput::Vector(
+                scores,
+            ) => {
                 assert_eq!(scores.len(), 2, "Should have 2 scores");
             }
             other => panic!("Expected vector output, got {:?}", other),
         }
 
         // Verify we got a valid response with tasks
-        assert_eq!(
-            response.tasks.len(),
-            1,
-            "Should have 1 task"
-        );
+        assert_eq!(response.tasks.len(), 1, "Should have 1 task");
     }
 }

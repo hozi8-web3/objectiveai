@@ -148,6 +148,7 @@ const qualityVectorCompletionTask = {
 
 const unmappedScalarFunctionTaskExpression = {
   type: "scalar.function",
+  remote: "github",
   owner: "test-owner",
   repository: "test-repo",
   commit: "abc123",
@@ -174,6 +175,7 @@ const mappedPlaceholderScalarFunctionTaskExpression = {
 
 const unmappedVectorFunctionTaskExpression = {
   type: "vector.function",
+  remote: "github",
   owner: "test-owner",
   repository: "test-repo",
   commit: "abc123",
@@ -733,6 +735,7 @@ describe("Quality schemas are subtypes of base schemas", () => {
     it("passes TaskSchema for scalar.function", () => {
       const value = {
         type: "scalar.function",
+        remote: "github",
         owner: "test-owner",
         repository: "test-repo",
         commit: "abc123",
@@ -745,6 +748,7 @@ describe("Quality schemas are subtypes of base schemas", () => {
     it("passes TaskSchema for vector.function", () => {
       const value = {
         type: "vector.function",
+        remote: "github",
         owner: "test-owner",
         repository: "test-repo",
         commit: "abc123",

@@ -11,7 +11,7 @@ use crate::functions::expression::{
     IntegerInputSchema, ObjectInputSchema, StringInputSchema, WithExpression,
 };
 use crate::functions::quality::check_branch_vector_function;
-use crate::functions::{
+use crate::functions::{Remote, 
     PlaceholderScalarFunctionTaskExpression,
     PlaceholderVectorFunctionTaskExpression, RemoteFunction,
     ScalarFunctionTaskExpression, TaskExpression,
@@ -41,6 +41,7 @@ fn wrong_type_scalar() {
         input_maps: None,
         tasks: vec![TaskExpression::ScalarFunction(
             ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -67,6 +68,7 @@ fn input_schema_string() {
         input_maps: None,
         tasks: vec![TaskExpression::VectorFunction(
             VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -108,6 +110,7 @@ fn input_schema_object_no_required_array() {
         input_maps: None,
         tasks: vec![TaskExpression::VectorFunction(
             VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -158,6 +161,7 @@ fn scalar_function_without_map() {
         input_maps: None,
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -167,6 +171,7 @@ fn scalar_function_without_map() {
                 output: Expression::Starlark("[x / sum(output) if sum(output) > 0 else 1.0 / len(output) for x in output]".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -219,6 +224,7 @@ fn placeholder_scalar_without_map() {
                 output: Expression::Starlark("[x / sum(output) if sum(output) > 0 else 1.0 / len(output) for x in output]".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -260,6 +266,7 @@ fn vector_function_with_map() {
         }),
         input_maps: None,
         tasks: vec![TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
             owner: "test".to_string(),
             repository: "test".to_string(),
             commit: "abc123".to_string(),
@@ -412,6 +419,7 @@ fn single_mapped_scalar_task() {
             Expression::Starlark("input['items']".to_string()),
         ])),
         tasks: vec![TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
             owner: "test".to_string(),
             repository: "test".to_string(),
             commit: "abc123".to_string(),
@@ -455,6 +463,7 @@ fn over_50_percent_mapped_scalar() {
         ])),
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -464,6 +473,7 @@ fn over_50_percent_mapped_scalar() {
                 output: Expression::Starlark("[x / sum(output) if sum(output) > 0 else 1.0 / len(output) for x in output]".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -473,6 +483,7 @@ fn over_50_percent_mapped_scalar() {
                 output: Expression::Starlark("[x / sum(output) if sum(output) > 0 else 1.0 / len(output) for x in output]".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -516,6 +527,7 @@ fn valid_single_vector_function() {
         }),
         input_maps: None,
         tasks: vec![TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
             owner: "test".to_string(),
             repository: "test".to_string(),
             commit: "abc123".to_string(),
@@ -618,6 +630,7 @@ fn valid_50_50_split() {
         ])),
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -627,6 +640,7 @@ fn valid_50_50_split() {
                 output: Expression::Starlark("[x / sum(output) if sum(output) > 0 else 1.0 / len(output) for x in output]".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -671,6 +685,7 @@ fn valid_mixed_tasks() {
         ])),
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -680,6 +695,7 @@ fn valid_mixed_tasks() {
                 output: Expression::Starlark("[x / sum(output) if sum(output) > 0 else 1.0 / len(output) for x in output]".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -689,6 +705,7 @@ fn valid_mixed_tasks() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -731,6 +748,7 @@ fn valid_all_unmapped_vector() {
         input_maps: None,
         tasks: vec![
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -740,6 +758,7 @@ fn valid_all_unmapped_vector() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -780,6 +799,7 @@ fn description_too_long() {
         input_maps: None,
         tasks: vec![TaskExpression::VectorFunction(
             VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -826,6 +846,7 @@ fn description_empty() {
         input_maps: None,
         tasks: vec![TaskExpression::VectorFunction(
             VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -879,6 +900,7 @@ fn input_diversity_fail_third_task_fixed_input() {
         tasks: vec![
             // Task 0: passes parent input through — OK
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -889,6 +911,7 @@ fn input_diversity_fail_third_task_fixed_input() {
             }),
             // Task 1: passes input with label modification — OK
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -899,6 +922,7 @@ fn input_diversity_fail_third_task_fixed_input() {
             }),
             // Task 2: FIXED input — ignores parent input
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -943,6 +967,7 @@ fn input_diversity_fail_third_task_mapped_fixed() {
         ])),
         tasks: vec![
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -952,6 +977,7 @@ fn input_diversity_fail_third_task_mapped_fixed() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -961,6 +987,7 @@ fn input_diversity_fail_third_task_mapped_fixed() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -970,6 +997,7 @@ fn input_diversity_fail_third_task_mapped_fixed() {
                 output: Expression::Starlark("[x / sum(output) if sum(output) > 0 else 1.0 / len(output) for x in output]".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1014,6 +1042,7 @@ fn input_diversity_pass_vector_function_passthrough() {
         input_maps: None,
         tasks: vec![
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1023,6 +1052,7 @@ fn input_diversity_pass_vector_function_passthrough() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1067,6 +1097,7 @@ fn input_diversity_pass_mixed_mapped_and_unmapped() {
         ])),
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1076,6 +1107,7 @@ fn input_diversity_pass_mixed_mapped_and_unmapped() {
                 output: Expression::Starlark("[x / sum(output) if sum(output) > 0 else 1.0 / len(output) for x in output]".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1201,6 +1233,7 @@ fn input_diversity_pass_mapped_scalar_with_two_vectors() {
         ])),
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1210,6 +1243,7 @@ fn input_diversity_pass_mapped_scalar_with_two_vectors() {
                 output: Expression::Starlark("[x / sum(output) if sum(output) > 0 else 1.0 / len(output) for x in output]".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1219,6 +1253,7 @@ fn input_diversity_pass_mapped_scalar_with_two_vectors() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1277,6 +1312,7 @@ fn input_diversity_fail_child_min_items_3() {
         input_maps: None,
         tasks: vec![
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1329,6 +1365,7 @@ fn input_diversity_pass_no_input_maps() {
         input_maps: None,
         tasks: vec![
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1338,6 +1375,7 @@ fn input_diversity_pass_no_input_maps() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1383,6 +1421,7 @@ fn input_diversity_fail_with_input_maps_fixed() {
         tasks: vec![
             // Task 0: unmapped vector passes input — OK
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1393,6 +1432,7 @@ fn input_diversity_fail_with_input_maps_fixed() {
             }),
             // Task 1: mapped scalar uses FIXED input, ignoring map element
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1471,6 +1511,7 @@ fn rejects_unused_input_maps() {
         ])),
         tasks: vec![
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1480,6 +1521,7 @@ fn rejects_unused_input_maps() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1527,6 +1569,7 @@ fn valid_with_skip_last_task_boolean() {
         input_maps: None,
         tasks: vec![
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1536,6 +1579,7 @@ fn valid_with_skip_last_task_boolean() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1578,6 +1622,7 @@ fn valid_with_skip_on_quick_mode() {
         input_maps: None,
         tasks: vec![
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1587,6 +1632,7 @@ fn valid_with_skip_on_quick_mode() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1631,6 +1677,7 @@ fn rejects_out_of_bounds_map_index() {
         ])),
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1640,6 +1687,7 @@ fn rejects_out_of_bounds_map_index() {
                 output: Expression::Starlark("[x / sum(output) if sum(output) > 0 else 1.0 / len(output) for x in output]".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1649,6 +1697,7 @@ fn rejects_out_of_bounds_map_index() {
                 output: Expression::Starlark("[x / sum(output) if sum(output) > 0 else 1.0 / len(output) for x in output]".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1658,6 +1707,7 @@ fn rejects_out_of_bounds_map_index() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1704,6 +1754,7 @@ fn output_distribution_pass_mapped_scalar_max_items_10() {
         ])),
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1713,6 +1764,7 @@ fn output_distribution_pass_mapped_scalar_max_items_10() {
                 output: Expression::Starlark("[x / sum(output) if sum(output) > 0 else 1.0 / len(output) for x in output]".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1757,6 +1809,7 @@ fn output_distribution_pass_mixed_tasks_max_items_10() {
         ])),
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1766,6 +1819,7 @@ fn output_distribution_pass_mixed_tasks_max_items_10() {
                 output: Expression::Starlark("[x / sum(output) if sum(output) > 0 else 1.0 / len(output) for x in output]".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1775,6 +1829,7 @@ fn output_distribution_pass_mixed_tasks_max_items_10() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1819,6 +1874,7 @@ fn output_distribution_fail_biased_mapped_scalar() {
         ])),
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1830,6 +1886,7 @@ fn output_distribution_fail_biased_mapped_scalar() {
                 ),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1871,6 +1928,7 @@ fn output_distribution_fail_biased_unmapped_vector() {
         }),
         input_maps: None,
         tasks: vec![TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
             owner: "test".to_string(),
             repository: "test".to_string(),
             commit: "abc123".to_string(),
@@ -1916,6 +1974,7 @@ fn output_distribution_fail_mapped_scalar_division_by_zero() {
         ])),
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1925,6 +1984,7 @@ fn output_distribution_fail_mapped_scalar_division_by_zero() {
                 output: Expression::Starlark("[x / sum(output) for x in output]".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1966,6 +2026,7 @@ fn output_distribution_pass_identity() {
         }),
         input_maps: None,
         tasks: vec![TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
             owner: "test".to_string(),
             repository: "test".to_string(),
             commit: "abc123".to_string(),
@@ -1997,6 +2058,7 @@ fn rejects_single_permutation_string_enum() {
         input_maps: None,
         tasks: vec![TaskExpression::VectorFunction(
             VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -2037,6 +2099,7 @@ fn all_tasks_skipped() {
         input_maps: None,
         tasks: vec![
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -2048,6 +2111,7 @@ fn all_tasks_skipped() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::VectorFunction(VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test2".to_string(),
                 commit: "abc123".to_string(),
@@ -2089,6 +2153,7 @@ fn rejects_single_permutation_integer() {
         input_maps: None,
         tasks: vec![TaskExpression::VectorFunction(
             VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -2129,6 +2194,7 @@ fn output_length_less_than_2() {
         input_maps: None,
         tasks: vec![TaskExpression::VectorFunction(
             VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),

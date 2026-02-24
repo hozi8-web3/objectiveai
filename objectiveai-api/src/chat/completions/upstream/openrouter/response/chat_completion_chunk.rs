@@ -10,7 +10,8 @@ pub struct ChatCompletionChunk {
     /// Unique identifier for this completion from OpenRouter.
     pub id: String,
     /// Completion choices containing the generated content.
-    pub choices: Vec<objectiveai::chat::completions::response::streaming::Choice>,
+    pub choices:
+        Vec<objectiveai::chat::completions::response::streaming::Choice>,
     /// Unix timestamp when the completion was created.
     pub created: u64,
     /// The model that generated this completion.
@@ -42,7 +43,8 @@ impl ChatCompletionChunk {
         model: String,
         is_byok: bool,
         cost_multiplier: rust_decimal::Decimal,
-    ) -> objectiveai::chat::completions::response::streaming::ChatCompletionChunk {
+    ) -> objectiveai::chat::completions::response::streaming::ChatCompletionChunk
+    {
         objectiveai::chat::completions::response::streaming::ChatCompletionChunk {
             id,
             upstream_id: self.id,
@@ -56,6 +58,7 @@ impl ChatCompletionChunk {
             usage: self
                 .usage
                 .map(|usage| usage.into_downstream(is_byok, cost_multiplier)),
+            upstream: objectiveai::chat::completions::Upstream::OpenRouter,
             provider: self.provider,
         }
     }
@@ -101,7 +104,9 @@ impl ChatCompletionChunk {
         other_choices: &[objectiveai::chat::completions::response::streaming::Choice],
     ) {
         fn push_choice(
-            choices: &mut Vec<objectiveai::chat::completions::response::streaming::Choice>,
+            choices: &mut Vec<
+                objectiveai::chat::completions::response::streaming::Choice,
+            >,
             other: &objectiveai::chat::completions::response::streaming::Choice,
         ) {
             fn find_choice(

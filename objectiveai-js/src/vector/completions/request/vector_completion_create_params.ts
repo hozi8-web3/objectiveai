@@ -1,5 +1,6 @@
 import { MessagesSchema } from "src/chat/completions/request/message";
 import { ProviderSchema } from "src/chat/completions/request/provider";
+import { UpstreamsSchema } from "src/chat/completions/upstream";
 import z from "zod";
 import { EnsembleSchema } from "./ensemble";
 import { ProfileSchema } from "./profile";
@@ -39,6 +40,7 @@ export const VectorCompletionCreateParamsBaseSchema = z
       .describe(
         "If true, any remaining votes are generated via RNG. Has lower priority than `retry` or `from_cache`."
       ),
+    upstreams: UpstreamsSchema,
     messages: MessagesSchema,
     provider: ProviderSchema.optional().nullable(),
     ensemble: EnsembleSchema,

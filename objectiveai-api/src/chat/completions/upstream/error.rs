@@ -6,6 +6,9 @@ pub enum Error {
     /// Error from the OpenRouter provider.
     #[error("openrouter error: {0}")]
     OpenRouter(#[from] super::openrouter::Error),
+    /// Error from the Claude Agent SDK provider.
+    #[error("claude agent sdk error: {0}")]
+    ClaudeAgentSdk(#[from] super::claude_agent_sdk::Error),
     /// Failed to fetch a BYOK API key.
     #[error("fetch BYOK error: {0}")]
     FetchByok(objectiveai::error::ResponseError),
@@ -21,6 +24,7 @@ impl objectiveai::error::StatusError for Error {
     fn status(&self) -> u16 {
         match self {
             Error::OpenRouter(e) => e.status(),
+            Error::ClaudeAgentSdk(e) => e.status(),
             Error::FetchByok(e) => e.status(),
             Error::MultipleErrors(_) => 500,
             Error::EmptyStream => 500,
@@ -30,6 +34,7 @@ impl objectiveai::error::StatusError for Error {
     fn message(&self) -> Option<serde_json::Value> {
         match self {
             Error::OpenRouter(e) => e.message(),
+            Error::ClaudeAgentSdk(e) => e.message(),
             Error::FetchByok(e) => e.message(),
             Error::MultipleErrors(errors) => Some(serde_json::json!({
                 "kind": "multiple_upstream_errors",
