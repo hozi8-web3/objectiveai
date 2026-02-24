@@ -1,19 +1,22 @@
 //! Converts ObjectiveAI message types to Claude Agent SDK format.
 
 use objectiveai::chat::completions::request::{
-    DeveloperMessage, File, ImageUrl, Message, RichContent, RichContentPart, SimpleContent,
-    SimpleContentPart, SystemMessage, UserMessage,
+    DeveloperMessage, File, ImageUrl, Message, RichContent, RichContentPart,
+    SimpleContent, SimpleContentPart, SystemMessage, UserMessage,
 };
 
 use super::content_block::{
-    Base64ImageSource, Base64ImageSourceType, Base64PDFSource, Base64PDFSourceType,
-    ContentBlockParam, DocumentBlockParam, DocumentBlockParamType, DocumentSource, ImageBlockParam,
-    ImageBlockParamType, ImageMediaType, ImageSource, PdfMediaType, PlainTextMediaType,
-    PlainTextSource, PlainTextSourceType, TextBlockParam, TextBlockParamType, URLImageSource,
-    URLImageSourceType, URLPDFSource, URLPDFSourceType,
+    Base64ImageSource, Base64ImageSourceType, Base64PDFSource,
+    Base64PDFSourceType, ContentBlockParam, DocumentBlockParam,
+    DocumentBlockParamType, DocumentSource, ImageBlockParam,
+    ImageBlockParamType, ImageMediaType, ImageSource, PdfMediaType,
+    PlainTextMediaType, PlainTextSource, PlainTextSourceType, TextBlockParam,
+    TextBlockParamType, URLImageSource, URLImageSourceType, URLPDFSource,
+    URLPDFSourceType,
 };
 use super::sdk_message::{
-    MessageContent, MessageParam, MessageRole, SDKUserMessage, SDKUserMessageType,
+    MessageContent, MessageParam, MessageRole, SDKUserMessage,
+    SDKUserMessageType,
 };
 
 // --- Helpers ---
@@ -37,7 +40,10 @@ fn make_text_block(text: String) -> ContentBlockParam {
     })
 }
 
-fn make_document_block(source: DocumentSource, title: Option<String>) -> ContentBlockParam {
+fn make_document_block(
+    source: DocumentSource,
+    title: Option<String>,
+) -> ContentBlockParam {
     ContentBlockParam::Document(DocumentBlockParam {
         r#type: DocumentBlockParamType::Document,
         source,
@@ -49,11 +55,15 @@ fn make_document_block(source: DocumentSource, title: Option<String>) -> Content
 }
 
 /// Convert a single ObjectiveAI RichContentPart to an Anthropic ContentBlockParam.
-fn rich_part_to_content_block(part: &RichContentPart) -> Result<ContentBlockParam, String> {
+fn rich_part_to_content_block(
+    part: &RichContentPart,
+) -> Result<ContentBlockParam, String> {
     match part {
         RichContentPart::Text { text } => Ok(make_text_block(text.clone())),
 
-        RichContentPart::ImageUrl { image_url } => image_url_to_block(image_url),
+        RichContentPart::ImageUrl { image_url } => {
+            image_url_to_block(image_url)
+        }
 
         RichContentPart::InputAudio { input_audio } => Err(format!(
             "unsupported content type: audio ({} format, {} base64 chars)",
@@ -61,25 +71,29 @@ fn rich_part_to_content_block(part: &RichContentPart) -> Result<ContentBlockPara
             input_audio.data.len()
         )),
 
-        RichContentPart::VideoUrl { video_url } | RichContentPart::InputVideo { video_url } => {
-            Err(format!(
-                "unsupported content type: video ({})",
-                video_url.url
-            ))
-        }
+        RichContentPart::VideoUrl { video_url }
+        | RichContentPart::InputVideo { video_url } => Err(format!(
+            "unsupported content type: video ({})",
+            video_url.url
+        )),
 
         RichContentPart::File { file } => file_to_block(file),
     }
 }
 
-fn image_url_to_block(image_url: &ImageUrl) -> Result<ContentBlockParam, String> {
+fn image_url_to_block(
+    image_url: &ImageUrl,
+) -> Result<ContentBlockParam, String> {
     let url = &image_url.url;
 
     if url.starts_with("data:") {
         // Parse data URI: data:<media_type>;base64,<data>
         let comma_index = match url.find(',') {
             Some(i) => i,
-            None => return Err("unsupported image: invalid data URI (no comma)".to_string()),
+            None => {
+                return Err("unsupported image: invalid data URI (no comma)"
+                    .to_string());
+            }
         };
         let meta = &url[5..comma_index]; // after "data:" before ","
         let raw_media_type = meta.split(';').next().unwrap_or("");
@@ -149,13 +163,17 @@ fn file_to_block(file: &File) -> Result<ContentBlockParam, String> {
         .as_deref()
         .or(file.file_id.as_deref())
         .unwrap_or("unknown");
-    Err(format!("unsupported file: no data or URL provided ({desc})"))
+    Err(format!(
+        "unsupported file: no data or URL provided ({desc})"
+    ))
 }
 
 // --- Content conversion ---
 
 /// Convert RichContent (string or parts) to ContentBlockParam vec.
-fn rich_content_to_blocks(content: &RichContent) -> Result<Vec<ContentBlockParam>, String> {
+fn rich_content_to_blocks(
+    content: &RichContent,
+) -> Result<Vec<ContentBlockParam>, String> {
     match content {
         RichContent::Text(s) => {
             if s.is_empty() {
@@ -164,7 +182,9 @@ fn rich_content_to_blocks(content: &RichContent) -> Result<Vec<ContentBlockParam
                 Ok(vec![make_text_block(s.clone())])
             }
         }
-        RichContent::Parts(parts) => parts.iter().map(rich_part_to_content_block).collect(),
+        RichContent::Parts(parts) => {
+            parts.iter().map(rich_part_to_content_block).collect()
+        }
     }
 }
 
@@ -181,7 +201,9 @@ fn simple_content_to_blocks(content: &SimpleContent) -> Vec<ContentBlockParam> {
         SimpleContent::Parts(parts) => parts
             .iter()
             .map(|p| match p {
-                SimpleContentPart::Text { text } => make_text_block(text.clone()),
+                SimpleContentPart::Text { text } => {
+                    make_text_block(text.clone())
+                }
             })
             .collect(),
     }
@@ -208,9 +230,15 @@ fn message_to_blocks(msg: &Message) -> Result<Vec<ContentBlockParam>, String> {
         | Message::Developer(DeveloperMessage { content, .. }) => {
             Ok(simple_content_to_blocks(content))
         }
-        Message::User(UserMessage { content, .. }) => rich_content_to_blocks(content),
-        Message::Assistant(_) => Err("unsupported: assistant messages cannot be converted".into()),
-        Message::Tool(_) => Err("unsupported: tool messages cannot be converted".into()),
+        Message::User(UserMessage { content, .. }) => {
+            rich_content_to_blocks(content)
+        }
+        Message::Assistant(_) => {
+            Err("unsupported: assistant messages cannot be converted".into())
+        }
+        Message::Tool(_) => {
+            Err("unsupported: tool messages cannot be converted".into())
+        }
     }
 }
 

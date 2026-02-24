@@ -132,14 +132,15 @@ async fn main() {
         ensemble_llm_fetcher.clone(),
         Arc::new(chat::completions::usage_handler::LogUsageHandler),
         chat::completions::upstream::Client::new(
-            chat::completions::upstream::openrouter::Client::new(
+            Some(chat::completions::upstream::openrouter::Client::new(
                 http_client,
                 openrouter_api_base,
                 openrouter_api_key,
                 user_agent.clone(),
                 x_title.clone(),
                 http_referer.clone(),
-            ),
+            )),
+            Some(chat::completions::upstream::claude_agent_sdk::client::Client),
         ),
         std::time::Duration::from_millis(
             chat_completions_backoff_current_interval,

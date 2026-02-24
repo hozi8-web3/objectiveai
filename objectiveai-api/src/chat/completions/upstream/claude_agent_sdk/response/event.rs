@@ -40,33 +40,42 @@ pub struct AnthropicUsage {
 ///
 /// Returns `Ok(None)` for unrecognized event types (forward-compatible).
 /// Returns `Err` for malformed JSON.
-pub fn parse_line(line: &str) -> Result<Option<ParsedEvent>, serde_json::Error> {
+pub fn parse_line(
+    line: &str,
+) -> Result<Option<ParsedEvent>, serde_json::Error> {
     let envelope: Envelope = serde_json::from_str(line)?;
     Ok(match envelope {
         Envelope::StreamEvent { event } => match event {
-            StreamEvent::MessageStart { message } => Some(ParsedEvent::MessageStart {
-                id: message.id,
-                model: message.model,
-            }),
+            StreamEvent::MessageStart { message } => {
+                Some(ParsedEvent::MessageStart {
+                    id: message.id,
+                    model: message.model,
+                })
+            }
             StreamEvent::ContentBlockDelta { delta } => match delta {
-                ContentDelta::TextDelta { text } => Some(ParsedEvent::TextDelta(text)),
+                ContentDelta::TextDelta { text } => {
+                    Some(ParsedEvent::TextDelta(text))
+                }
                 ContentDelta::ThinkingDelta { thinking } => {
                     Some(ParsedEvent::ThinkingDelta(thinking))
                 }
                 ContentDelta::Unknown => None,
             },
-            StreamEvent::MessageDelta { delta, usage } => Some(ParsedEvent::MessageDelta {
-                stop_reason: delta.stop_reason.as_deref().map(parse_stop_reason),
-                usage,
-            }),
+            StreamEvent::MessageDelta { delta, usage } => {
+                Some(ParsedEvent::MessageDelta {
+                    stop_reason: delta
+                        .stop_reason
+                        .as_deref()
+                        .map(parse_stop_reason),
+                    usage,
+                })
+            }
             StreamEvent::MessageStop => Some(ParsedEvent::MessageStop),
             StreamEvent::Unknown => None,
         },
         Envelope::Result(result) => Some(ParsedEvent::Result {
             total_cost_usd: result.total_cost_usd,
-            service_tier: result
-                .usage
-                .and_then(|u| u.service_tier),
+            service_tier: result.usage.and_then(|u| u.service_tier),
         }),
         Envelope::Unknown => None,
     })

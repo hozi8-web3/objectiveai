@@ -272,7 +272,7 @@ fn create_test_chat_client() -> Arc<TestChatClient> {
             None, // referer
         );
     let upstream_client =
-        chat::completions::upstream::Client::new(openrouter_client);
+        chat::completions::upstream::Client::new(Some(openrouter_client), None);
 
     Arc::new(chat::completions::Client::new(
         ensemble_llm_fetcher,

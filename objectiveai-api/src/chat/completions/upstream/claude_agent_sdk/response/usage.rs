@@ -15,8 +15,9 @@ impl AnthropicUsage {
         is_byok: bool,
         cost_multiplier: Decimal,
     ) -> objectiveai::chat::completions::response::Usage {
-        let prompt_tokens =
-            self.input_tokens + self.cache_creation_input_tokens + self.cache_read_input_tokens;
+        let prompt_tokens = self.input_tokens
+            + self.cache_creation_input_tokens
+            + self.cache_read_input_tokens;
         let total_tokens = prompt_tokens + self.output_tokens;
 
         // Anthropic is the only upstream layer — both upstream costs are the raw cost.

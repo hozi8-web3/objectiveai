@@ -10,8 +10,8 @@ use rust_decimal::Decimal;
 use tokio::io::AsyncBufReadExt;
 use tokio::io::BufReader;
 use tokio::process::Command;
-use tokio_stream::wrappers::LinesStream;
 use tokio_stream::StreamExt;
+use tokio_stream::wrappers::LinesStream;
 
 use super::response::event::{self, AnthropicUsage, ParsedEvent};
 
@@ -44,21 +44,26 @@ fn output_format_json(
     match ensemble_llm.base.output_mode {
         objectiveai::ensemble_llm::OutputMode::JsonSchema => {
             let think = ensemble_llm.base.synthetic_reasoning.unwrap_or(false);
-            let keys: Vec<String> = vector_pfx_indices.iter().map(|(k, _)| k.clone()).collect();
-            let rf = crate::vector::completions::ResponseKey::response_format(keys, think);
+            let keys: Vec<String> =
+                vector_pfx_indices.iter().map(|(k, _)| k.clone()).collect();
+            let rf = crate::vector::completions::ResponseKey::response_format(
+                keys, think,
+            );
             serde_json::to_string(&rf).ok()
         }
         objectiveai::ensemble_llm::OutputMode::ToolCall => {
             let think = ensemble_llm.base.synthetic_reasoning.unwrap_or(false);
-            let keys: Vec<String> = vector_pfx_indices.iter().map(|(k, _)| k.clone()).collect();
-            let tool = crate::vector::completions::ResponseKey::tool(keys, think);
-            let objectiveai::chat::completions::request::Tool::Function { function } = &tool;
-            function
-                .parameters
-                .as_ref()
-                .and_then(|p| {
-                    serde_json::to_string(&serde_json::Value::Object(p.clone())).ok()
-                })
+            let keys: Vec<String> =
+                vector_pfx_indices.iter().map(|(k, _)| k.clone()).collect();
+            let tool =
+                crate::vector::completions::ResponseKey::tool(keys, think);
+            let objectiveai::chat::completions::request::Tool::Function {
+                function,
+            } = &tool;
+            function.parameters.as_ref().and_then(|p| {
+                serde_json::to_string(&serde_json::Value::Object(p.clone()))
+                    .ok()
+            })
         }
         objectiveai::ensemble_llm::OutputMode::Instruction => None,
     }
@@ -83,7 +88,8 @@ impl Client {
         other_chunk_timeout: Duration,
         ensemble_llm: &objectiveai::ensemble_llm::EnsembleLlm,
         request: &objectiveai::chat::completions::request::ChatCompletionCreateParams,
-    ) -> impl Stream<Item = Result<ChatCompletionChunk, super::Error>> + Send + 'static {
+    ) -> impl Stream<Item = Result<ChatCompletionChunk, super::Error>> + Send + 'static
+    {
         let messages = super::super::openrouter::request::prompt::new_for_chat(
             ensemble_llm.base.prefix_messages.as_deref(),
             &request.messages,
@@ -97,7 +103,8 @@ impl Client {
             .base
             .verbosity
             .map(|v| verbosity_to_str(v).to_owned());
-        let reasoning_max_tokens = ensemble_llm.base.reasoning.and_then(|r| r.max_tokens);
+        let reasoning_max_tokens =
+            ensemble_llm.base.reasoning.and_then(|r| r.max_tokens);
 
         self.create_streaming_inner(
             id,
@@ -125,15 +132,17 @@ impl Client {
         ensemble_llm: &objectiveai::ensemble_llm::EnsembleLlm,
         request: &objectiveai::vector::completions::request::VectorCompletionCreateParams,
         vector_pfx_indices: &[(String, usize)],
-    ) -> impl Stream<Item = Result<ChatCompletionChunk, super::Error>> + Send + 'static {
-        let messages = super::super::openrouter::request::prompt::new_for_vector(
-            &request.responses,
-            vector_pfx_indices,
-            ensemble_llm.base.output_mode,
-            ensemble_llm.base.prefix_messages.as_deref(),
-            &request.messages,
-            ensemble_llm.base.suffix_messages.as_deref(),
-        );
+    ) -> impl Stream<Item = Result<ChatCompletionChunk, super::Error>> + Send + 'static
+    {
+        let messages =
+            super::super::openrouter::request::prompt::new_for_vector(
+                &request.responses,
+                vector_pfx_indices,
+                ensemble_llm.base.output_mode,
+                ensemble_llm.base.prefix_messages.as_deref(),
+                &request.messages,
+                ensemble_llm.base.suffix_messages.as_deref(),
+            );
 
         let model = transform_model(&ensemble_llm.base.model);
         let ensemble_llm_id = ensemble_llm.id.clone();
@@ -142,7 +151,8 @@ impl Client {
             .base
             .verbosity
             .map(|v| verbosity_to_str(v).to_owned());
-        let reasoning_max_tokens = ensemble_llm.base.reasoning.and_then(|r| r.max_tokens);
+        let reasoning_max_tokens =
+            ensemble_llm.base.reasoning.and_then(|r| r.max_tokens);
         let fmt = output_format_json(ensemble_llm, vector_pfx_indices);
 
         self.create_streaming_inner(
@@ -175,7 +185,8 @@ impl Client {
         verbosity: Option<String>,
         reasoning_max_tokens: Option<u64>,
         output_format_json: Option<String>,
-    ) -> impl Stream<Item = Result<ChatCompletionChunk, super::Error>> + Send + 'static {
+    ) -> impl Stream<Item = Result<ChatCompletionChunk, super::Error>> + Send + 'static
+    {
         async_stream::stream! {
             // Convert ObjectiveAI messages to SDK format
             let (system_prompt, sdk_message) = match super::convert::convert(&messages) {
@@ -445,7 +456,9 @@ fn make_chunk(
     upstream_model: &str,
     created: u64,
     delta: Delta,
-    finish_reason: Option<objectiveai::chat::completions::response::FinishReason>,
+    finish_reason: Option<
+        objectiveai::chat::completions::response::FinishReason,
+    >,
     usage: Option<objectiveai::chat::completions::response::Usage>,
     service_tier: Option<String>,
 ) -> ChatCompletionChunk {
