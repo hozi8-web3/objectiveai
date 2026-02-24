@@ -183,13 +183,17 @@ impl Client {
         other_chunk_timeout: Duration,
         ensemble_llm: &objectiveai::ensemble_llm::EnsembleLlm,
         request: &objectiveai::chat::completions::request::ChatCompletionCreateParams,
-    ) -> impl Stream<
-        Item = Result<
-            objectiveai::chat::completions::response::streaming::ChatCompletionChunk,
-            super::Error,
+    ) -> std::pin::Pin<
+        Box<
+            dyn Stream<
+                    Item = Result<
+                        objectiveai::chat::completions::response::streaming::ChatCompletionChunk,
+                        super::Error,
+                    >,
+                > + Send
+                + 'static,
         >,
-    > + Send
-    + 'static{
+    > {
         match upstream {
             objectiveai::chat::completions::Upstream::Unknown => {
                 panic!(
@@ -207,9 +211,21 @@ impl Client {
                     ensemble_llm,
                     request,
                 )
-                .map_err(super::Error::from),
+                .map_err(super::Error::from)
+                .boxed(),
             objectiveai::chat::completions::Upstream::ClaudeAgentSdk => {
-                unimplemented!()
+                super::claude_agent_sdk::client::Client
+                    .create_streaming_for_chat(
+                        id,
+                        byok,
+                        cost_multiplier,
+                        first_chunk_timeout,
+                        other_chunk_timeout,
+                        ensemble_llm,
+                        request,
+                    )
+                    .map_err(super::Error::from)
+                    .boxed()
             }
         }
     }
@@ -228,13 +244,17 @@ impl Client {
         ensemble_llm: &objectiveai::ensemble_llm::EnsembleLlm,
         request: &objectiveai::vector::completions::request::VectorCompletionCreateParams,
         vector_pfx_indices: &[(String, usize)],
-    ) -> impl Stream<
-        Item = Result<
-            objectiveai::chat::completions::response::streaming::ChatCompletionChunk,
-            super::Error,
+    ) -> std::pin::Pin<
+        Box<
+            dyn Stream<
+                    Item = Result<
+                        objectiveai::chat::completions::response::streaming::ChatCompletionChunk,
+                        super::Error,
+                    >,
+                > + Send
+                + 'static,
         >,
-    > + Send
-    + 'static{
+    > {
         match upstream {
             objectiveai::chat::completions::Upstream::Unknown => {
                 panic!(
@@ -253,9 +273,22 @@ impl Client {
                     request,
                     vector_pfx_indices,
                 )
-                .map_err(super::Error::from),
+                .map_err(super::Error::from)
+                .boxed(),
             objectiveai::chat::completions::Upstream::ClaudeAgentSdk => {
-                unimplemented!()
+                super::claude_agent_sdk::client::Client
+                    .create_streaming_for_vector(
+                        id,
+                        byok,
+                        cost_multiplier,
+                        first_chunk_timeout,
+                        other_chunk_timeout,
+                        ensemble_llm,
+                        request,
+                        vector_pfx_indices,
+                    )
+                    .map_err(super::Error::from)
+                    .boxed()
             }
         }
     }
