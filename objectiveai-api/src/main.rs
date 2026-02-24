@@ -1085,6 +1085,7 @@ async fn main() {
             .await
             .unwrap();
 
+    eprintln!("listening on {}:{}", address, port);
     axum::serve(listener, app).await.unwrap();
 }
 
