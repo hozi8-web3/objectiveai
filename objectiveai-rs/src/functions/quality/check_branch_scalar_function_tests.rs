@@ -10,7 +10,7 @@ use crate::functions::expression::{
     IntegerInputSchema, ObjectInputSchema, StringInputSchema, WithExpression,
 };
 use crate::functions::quality::check_branch_scalar_function;
-use crate::functions::{
+use crate::functions::{Remote, 
     PlaceholderScalarFunctionTaskExpression,
     PlaceholderVectorFunctionTaskExpression, RemoteFunction,
     ScalarFunctionTaskExpression, TaskExpression,
@@ -81,6 +81,7 @@ fn has_input_maps() {
         )),
         tasks: vec![TaskExpression::ScalarFunction(
             ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -108,6 +109,7 @@ fn scalar_function_has_map() {
         input_maps: None,
         tasks: vec![TaskExpression::ScalarFunction(
             ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -168,6 +170,7 @@ fn contains_vector_function() {
         input_maps: None,
         tasks: vec![TaskExpression::VectorFunction(
             VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -299,6 +302,7 @@ fn valid_single_scalar_function() {
         input_maps: None,
         tasks: vec![TaskExpression::ScalarFunction(
             ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -355,6 +359,7 @@ fn valid_multiple_tasks() {
         input_maps: None,
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -413,6 +418,7 @@ fn description_too_long() {
         input_maps: None,
         tasks: vec![TaskExpression::ScalarFunction(
             ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -439,6 +445,7 @@ fn description_empty() {
         input_maps: None,
         tasks: vec![TaskExpression::ScalarFunction(
             ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -467,6 +474,7 @@ fn scalar_diversity_fail_fixed_input() {
         input_maps: None,
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -478,6 +486,7 @@ fn scalar_diversity_fail_fixed_input() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -505,6 +514,7 @@ fn scalar_diversity_fail_fixed_integer() {
         input_maps: None,
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -516,6 +526,7 @@ fn scalar_diversity_fail_fixed_integer() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -553,6 +564,7 @@ fn scalar_diversity_fail_third_task_fixed_object() {
         input_maps: None,
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -564,6 +576,7 @@ fn scalar_diversity_fail_third_task_fixed_object() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -575,6 +588,7 @@ fn scalar_diversity_fail_third_task_fixed_object() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -603,6 +617,7 @@ fn scalar_diversity_pass_string_passthrough() {
         input_maps: None,
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -614,6 +629,7 @@ fn scalar_diversity_pass_string_passthrough() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -641,6 +657,7 @@ fn scalar_diversity_pass_integer_derived() {
         input_maps: None,
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -652,6 +669,7 @@ fn scalar_diversity_pass_integer_derived() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -688,6 +706,7 @@ fn scalar_diversity_pass_object_extract_field() {
         input_maps: None,
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -699,6 +718,7 @@ fn scalar_diversity_pass_object_extract_field() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -789,6 +809,7 @@ fn scalar_diversity_pass_optional_field_used() {
         input_maps: None,
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -800,6 +821,7 @@ fn scalar_diversity_pass_optional_field_used() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -831,6 +853,7 @@ fn scalar_diversity_pass_array_input() {
         input_maps: None,
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -842,6 +865,7 @@ fn scalar_diversity_pass_array_input() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -879,6 +903,7 @@ fn valid_with_skip_last_task_boolean() {
         input_maps: None,
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -890,6 +915,7 @@ fn valid_with_skip_last_task_boolean() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -927,6 +953,7 @@ fn valid_with_skip_on_low_priority() {
         input_maps: None,
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -938,6 +965,7 @@ fn valid_with_skip_on_low_priority() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -967,6 +995,7 @@ fn output_distribution_fail_biased_output_expression() {
         input_maps: None,
         tasks: vec![TaskExpression::ScalarFunction(
             ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -996,6 +1025,7 @@ fn output_distribution_pass_identity() {
         input_maps: None,
         tasks: vec![TaskExpression::ScalarFunction(
             ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1022,6 +1052,7 @@ fn rejects_single_permutation_string_enum() {
         input_maps: None,
         tasks: vec![TaskExpression::ScalarFunction(
             ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1049,6 +1080,7 @@ fn rejects_single_permutation_integer() {
         input_maps: None,
         tasks: vec![TaskExpression::ScalarFunction(
             ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1075,6 +1107,7 @@ fn all_tasks_skipped() {
         input_maps: None,
         tasks: vec![
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -1086,6 +1119,7 @@ fn all_tasks_skipped() {
                 output: Expression::Starlark("output".to_string()),
             }),
             TaskExpression::ScalarFunction(ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test2".to_string(),
                 commit: "abc123".to_string(),

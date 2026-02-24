@@ -58,6 +58,9 @@ pub struct FunctionRemoteProfileRemoteRequestBody {
     pub reasoning: Option<super::Reasoning>,
 
     // --- Core configuration ---
+    /// Available upstreams for this request
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upstreams: Option<Vec<crate::chat::completions::Upstream>>,
     /// Execution strategy.
     /// Defaults to `Default` strategy if not specified.
     #[serde(skip_serializing_if = "Option::is_none")]

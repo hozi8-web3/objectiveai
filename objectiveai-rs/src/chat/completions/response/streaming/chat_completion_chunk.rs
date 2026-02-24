@@ -34,7 +34,7 @@ pub struct ChatCompletionChunk {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<response::Usage>,
     /// Upstream provider
-    pub upstream: response::Upstream,
+    pub upstream: crate::chat::completions::Upstream,
 
     /// The provider that served the request (OpenRouter-specific).
     #[serde(skip_serializing_if = "Option::is_none")]
