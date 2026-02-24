@@ -85,6 +85,7 @@ function qualityVcTaskObj() {
 function scalarFunctionTask() {
   return {
     type: "scalar.function",
+    remote: "github",
     owner: "test",
     repository: "test",
     commit: "abc123",
@@ -96,6 +97,7 @@ function scalarFunctionTask() {
 function vectorFunctionTask() {
   return {
     type: "vector.function",
+    remote: "github",
     owner: "test",
     repository: "test",
     commit: "abc123",

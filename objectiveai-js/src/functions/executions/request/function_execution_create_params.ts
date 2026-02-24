@@ -4,6 +4,7 @@ import { ReasoningSchema } from "./reasoning";
 import { StrategySchema } from "./strategy";
 import { InputValueSchema } from "src/functions/expression/input";
 import { ProviderSchema } from "src/chat/completions/request/provider";
+import { UpstreamsSchema } from "src/chat/completions/upstream";
 import {
   BackoffMaxElapsedTimeSchema,
   FirstChunkTimeoutSchema,
@@ -42,6 +43,7 @@ export const FunctionExecutionCreateParamsRemoteFunctionRemoteProfileBaseSchema 
         .describe(
           "If true, any remaining votes from vector completion tasks are generated via RNG. Has lower priority than `retry_token` or `from_cache`.",
         ),
+      upstreams: UpstreamsSchema,
       strategy: StrategySchema.optional()
         .nullable()
         .describe(

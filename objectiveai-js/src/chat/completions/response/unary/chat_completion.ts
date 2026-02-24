@@ -1,6 +1,6 @@
 import z from "zod";
 import { ChoiceSchema } from "./choice";
-import { UpstreamSchema } from "../upstream";
+import { UpstreamSchema } from "../../upstream";
 import { UsageSchema } from "../usage";
 import { ResponseObjectSchema } from "./response_object";
 import { convert, type JSONSchema } from "../../../../json_schema";

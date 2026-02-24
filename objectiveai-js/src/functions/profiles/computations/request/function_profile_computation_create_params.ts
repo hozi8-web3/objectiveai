@@ -2,6 +2,7 @@ import z from "zod";
 import { DatasetSchema } from "./dataset";
 import { EnsembleSchema } from "src/vector/completions/request/ensemble";
 import { ProviderSchema } from "src/chat/completions/request/provider";
+import { UpstreamsSchema } from "src/chat/completions/upstream";
 import {
   BackoffMaxElapsedTimeSchema,
   FirstChunkTimeoutSchema,
@@ -38,6 +39,7 @@ export const FunctionProfileComputationCreateParamsRemoteFunctionBaseSchema = z
       .describe(
         "If true, any remaining votes from vector completion tasks are generated via RNG. Has lower priority than `retry_token` or `from_cache`."
       ),
+    upstreams: UpstreamsSchema,
     max_retries: z
       .uint32()
       .optional()
