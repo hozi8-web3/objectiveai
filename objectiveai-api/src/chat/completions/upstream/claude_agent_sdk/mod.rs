@@ -11,4 +11,7 @@ mod js;
 pub mod response;
 mod sdk_message;
 
+#[cfg(test)]
+mod client_tests;
+
 pub use error::Error;

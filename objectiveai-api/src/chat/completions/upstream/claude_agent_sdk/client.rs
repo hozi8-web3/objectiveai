@@ -136,35 +136,19 @@ impl Client {
         request: &objectiveai::chat::completions::request::ChatCompletionCreateParams,
     ) -> impl Stream<Item = Result<ChatCompletionChunk, super::Error>> + Send + 'static
     {
-        let messages = super::super::openrouter::request::prompt::new_for_chat(
-            ensemble_llm.base.prefix_messages.as_deref(),
-            &request.messages,
-            ensemble_llm.base.suffix_messages.as_deref(),
-        );
-
-        let model = transform_model(&ensemble_llm.base.model);
+        let js = compile_js_for_chat(ensemble_llm, request);
         let ensemble_llm_id = ensemble_llm.id.clone();
         let is_byok = _byok.is_some();
-        let verbosity = ensemble_llm
-            .base
-            .verbosity
-            .map(|v| verbosity_to_str(v).to_owned());
-        let reasoning_max_tokens =
-            ensemble_llm.base.reasoning.and_then(|r| r.max_tokens);
 
-        self.create_streaming_inner(
+        self.run_js(
             id,
             ensemble_llm_id,
             is_byok,
             cost_multiplier,
             first_chunk_timeout,
             other_chunk_timeout,
-            messages,
-            model,
-            verbosity,
-            reasoning_max_tokens,
-            None,
-            false,
+            js,
+            false, // buffer_content: chat mode never buffers
         )
     }
 
@@ -181,46 +165,27 @@ impl Client {
         vector_pfx_indices: &[(String, usize)],
     ) -> impl Stream<Item = Result<ChatCompletionChunk, super::Error>> + Send + 'static
     {
-        let messages =
-            super::super::openrouter::request::prompt::new_for_vector(
-                &request.responses,
-                vector_pfx_indices,
-                ensemble_llm.base.output_mode,
-                ensemble_llm.base.prefix_messages.as_deref(),
-                &request.messages,
-                ensemble_llm.base.suffix_messages.as_deref(),
-            );
-
-        let model = transform_model(&ensemble_llm.base.model);
+        let js = compile_js_for_vector(ensemble_llm, request, vector_pfx_indices);
         let ensemble_llm_id = ensemble_llm.id.clone();
         let is_byok = _byok.is_some();
-        let verbosity = ensemble_llm
-            .base
-            .verbosity
-            .map(|v| verbosity_to_str(v).to_owned());
-        let reasoning_max_tokens =
-            ensemble_llm.base.reasoning.and_then(|r| r.max_tokens);
-        let fmt = output_format_json(ensemble_llm, vector_pfx_indices);
+        let has_output_format = ensemble_llm.base.output_mode
+            != objectiveai::ensemble_llm::OutputMode::Instruction;
 
-        self.create_streaming_inner(
+        self.run_js(
             id,
             ensemble_llm_id,
             is_byok,
             cost_multiplier,
             first_chunk_timeout,
             other_chunk_timeout,
-            messages,
-            model,
-            verbosity,
-            reasoning_max_tokens,
-            fmt,
-            true,
+            js,
+            has_output_format, // buffer_content: only in vector mode with structured output
         )
     }
 
-    /// Internal streaming implementation shared by chat and vector.
+    /// Spawns a Node.js subprocess with pre-compiled JS and streams events.
     #[allow(clippy::too_many_arguments)]
-    fn create_streaming_inner(
+    fn run_js(
         &self,
         id: String,
         ensemble_llm_id: String,
@@ -228,42 +193,19 @@ impl Client {
         cost_multiplier: Decimal,
         first_chunk_timeout: Duration,
         other_chunk_timeout: Duration,
-        messages: Vec<objectiveai::chat::completions::request::Message>,
-        model: String,
-        verbosity: Option<String>,
-        reasoning_max_tokens: Option<u64>,
-        output_format_json: Option<String>,
-        is_vector: bool,
+        js: Result<String, super::Error>,
+        buffer_content: bool,
     ) -> impl Stream<Item = Result<ChatCompletionChunk, super::Error>> + Send + 'static
     {
         let sdk_path = self.sdk_path().map(|s| s.to_owned());
         async_stream::stream! {
-            // Convert ObjectiveAI messages to SDK format
-            let (system_prompt, sdk_message) = match super::convert::convert(&messages) {
-                Ok(result) => result,
+            let js = match js {
+                Ok(js) => js,
                 Err(e) => {
-                    yield Err(super::Error::Convert(e));
+                    yield Err(e);
                     return;
                 }
             };
-
-            let message_json = match serde_json::to_string(&sdk_message) {
-                Ok(json) => json,
-                Err(e) => {
-                    yield Err(super::Error::Json(e));
-                    return;
-                }
-            };
-
-            // Build inline JS and write to temp file (avoids Windows command line length limits)
-            let js = super::js::build_js(
-                &system_prompt,
-                &message_json,
-                &model,
-                verbosity.as_deref(),
-                reasoning_max_tokens,
-                output_format_json.as_deref(),
-            );
 
             let tmp_dir = std::env::temp_dir();
             let tmp_path = tmp_dir.join(format!("claude_sdk_{}.js", std::process::id()));
@@ -331,11 +273,10 @@ impl Client {
             // Key: content block index, Value: tool call index (0-based).
             let mut tool_call_index_map: std::collections::HashMap<u64, u64> = std::collections::HashMap::new();
 
-            // In vector mode with outputFormat, buffer content text and re-emit as
+            // When buffer_content is set, buffer content text and re-emit as
             // reasoning once a tool call arrives. After a tool call is seen, any
             // further content is yielded as reasoning immediately. If no tool call
             // happens, the buffer is flushed as normal content.
-            let buffer_content = is_vector && output_format_json.is_some();
             let mut content_buffer = String::new();
             let mut tool_seen = false;
 
@@ -669,4 +610,66 @@ fn verbosity_to_str(v: objectiveai::ensemble_llm::Verbosity) -> &'static str {
         objectiveai::ensemble_llm::Verbosity::High => "high",
         objectiveai::ensemble_llm::Verbosity::Max => "max",
     }
+}
+
+/// Compiles the JavaScript that would be sent to the Node.js subprocess.
+///
+/// Shared by both the streaming path and tests.
+fn compile_js(
+    messages: Vec<objectiveai::chat::completions::request::Message>,
+    ensemble_llm: &objectiveai::ensemble_llm::EnsembleLlm,
+    output_format_json: Option<String>,
+) -> Result<String, super::Error> {
+    let model = transform_model(&ensemble_llm.base.model);
+    let verbosity = ensemble_llm
+        .base
+        .verbosity
+        .map(|v| verbosity_to_str(v).to_owned());
+    let reasoning_max_tokens =
+        ensemble_llm.base.reasoning.and_then(|r| r.max_tokens);
+
+    let (system_prompt, sdk_message) =
+        super::convert::convert(&messages).map_err(super::Error::Convert)?;
+    let message_json =
+        serde_json::to_string(&sdk_message).map_err(super::Error::Json)?;
+
+    Ok(super::js::build_js(
+        &system_prompt,
+        &message_json,
+        &model,
+        verbosity.as_deref(),
+        reasoning_max_tokens,
+        output_format_json.as_deref(),
+    ))
+}
+
+/// Compiles the JS for a chat completion request.
+pub(crate) fn compile_js_for_chat(
+    ensemble_llm: &objectiveai::ensemble_llm::EnsembleLlm,
+    request: &objectiveai::chat::completions::request::ChatCompletionCreateParams,
+) -> Result<String, super::Error> {
+    let messages = super::super::openrouter::request::prompt::new_for_chat(
+        ensemble_llm.base.prefix_messages.as_deref(),
+        &request.messages,
+        ensemble_llm.base.suffix_messages.as_deref(),
+    );
+    compile_js(messages, ensemble_llm, None)
+}
+
+/// Compiles the JS for a vector completion request.
+pub(crate) fn compile_js_for_vector(
+    ensemble_llm: &objectiveai::ensemble_llm::EnsembleLlm,
+    request: &objectiveai::vector::completions::request::VectorCompletionCreateParams,
+    vector_pfx_indices: &[(String, usize)],
+) -> Result<String, super::Error> {
+    let messages = super::super::openrouter::request::prompt::new_for_vector(
+        &request.responses,
+        vector_pfx_indices,
+        ensemble_llm.base.output_mode,
+        ensemble_llm.base.prefix_messages.as_deref(),
+        &request.messages,
+        ensemble_llm.base.suffix_messages.as_deref(),
+    );
+    let fmt = output_format_json(ensemble_llm, vector_pfx_indices);
+    compile_js(messages, ensemble_llm, fmt)
 }
