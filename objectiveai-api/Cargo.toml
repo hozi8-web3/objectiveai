@@ -29,11 +29,11 @@ dashmap = { version = "6.1.0" }
 uuid = { version = "1.16.0", features = ["v4", "serde"] }
 async-stream = { version = "0.3.6" }
 async-trait = { version = "0.1.88" }
-tokio = { version = "1.45.0", features = ["rt-multi-thread", "macros", "sync"] }
+tokio = { version = "1.45.0", features = ["rt-multi-thread", "macros", "sync", "process", "io-util", "time"] }
 backoff = { version = "0.4.0", features = ["tokio"] }
 rand = { version = "0.9.2" }
 regex = { version = "1.11.1" }
-tokio-stream = { version = "0.1.17" }
+tokio-stream = { version = "0.1.17", features = ["io-util"] }
 either = { version = "1.15.0" }
 ahash = { version = "0.8.12" }
 envconfig = { version = "0.11.0" }

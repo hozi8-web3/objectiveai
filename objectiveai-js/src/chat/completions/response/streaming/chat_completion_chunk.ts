@@ -1,5 +1,6 @@
 import z from "zod";
 import { Choice, ChoiceSchema } from "./choice";
+import { UpstreamSchema } from "../../upstream";
 import { UsageSchema } from "../usage";
 import { ResponseObjectSchema } from "./response_object";
 import { merge } from "src/merge";
@@ -31,6 +32,7 @@ export const ChatCompletionChunkSchema = z
     service_tier: z.string().optional(),
     system_fingerprint: z.string().optional(),
     usage: UsageSchema.optional(),
+    upstream: UpstreamSchema,
     provider: z
       .string()
       .optional()
@@ -52,6 +54,7 @@ export namespace ChatCompletionChunk {
     const model = a.model;
     const upstream_model = a.upstream_model;
     const object = a.object;
+    const upstream = a.upstream;
     const [service_tier, service_tierChanged] = merge(
       a.service_tier,
       b.service_tier
@@ -78,6 +81,7 @@ export namespace ChatCompletionChunk {
           model,
           upstream_model,
           object,
+          upstream,
           ...(service_tier !== undefined ? { service_tier } : {}),
           ...(system_fingerprint !== undefined ? { system_fingerprint } : {}),
           ...(usage !== undefined ? { usage } : {}),

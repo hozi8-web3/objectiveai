@@ -10,13 +10,21 @@ use std::{sync::Arc, time::Duration};
 #[derive(Debug, Clone)]
 pub struct Client {
     /// OpenRouter provider client.
-    pub openrouter_client: super::openrouter::Client,
+    pub openrouter_client: Option<super::openrouter::Client>,
+    /// Claude Agent SDK provider client.
+    pub claude_agent_sdk_client: Option<super::claude_agent_sdk::client::Client>,
 }
 
 impl Client {
     /// Creates a new upstream client.
-    pub fn new(openrouter_client: super::openrouter::Client) -> Self {
-        Self { openrouter_client }
+    pub fn new(
+        openrouter_client: Option<super::openrouter::Client>,
+        claude_agent_sdk_client: Option<super::claude_agent_sdk::client::Client>,
+    ) -> Self {
+        Self {
+            openrouter_client,
+            claude_agent_sdk_client,
+        }
     }
 
     /// Creates a streaming completion, trying each upstream provider in order.
@@ -45,7 +53,7 @@ impl Client {
         super::Error,
     >{
         let mut errors = Vec::new();
-        let upstreams = super::upstreams(&ensemble_llm, request.clone());
+        let upstreams = super::upstreams(&ensemble_llm, &request);
 
         // try each upstream in order
         for &upstream in &upstreams {
@@ -116,7 +124,7 @@ impl Client {
     /// Creates a streaming completion with a specific upstream provider.
     async fn upstream_create_streaming(
         &self,
-        upstream: super::Upstream,
+        upstream: objectiveai::chat::completions::Upstream,
         id: String,
         byok: Option<String>,
         cost_multiplier: rust_decimal::Decimal,
@@ -175,7 +183,7 @@ impl Client {
     /// Creates a streaming chat completion with a specific upstream provider.
     fn create_streaming_for_chat(
         &self,
-        upstream: super::Upstream,
+        upstream: objectiveai::chat::completions::Upstream,
         id: String,
         byok: Option<&str>,
         cost_multiplier: rust_decimal::Decimal,
@@ -183,26 +191,55 @@ impl Client {
         other_chunk_timeout: Duration,
         ensemble_llm: &objectiveai::ensemble_llm::EnsembleLlm,
         request: &objectiveai::chat::completions::request::ChatCompletionCreateParams,
-    ) -> impl Stream<
-        Item = Result<
-            objectiveai::chat::completions::response::streaming::ChatCompletionChunk,
-            super::Error,
+    ) -> std::pin::Pin<
+        Box<
+            dyn Stream<
+                    Item = Result<
+                        objectiveai::chat::completions::response::streaming::ChatCompletionChunk,
+                        super::Error,
+                    >,
+                > + Send
+                + 'static,
         >,
-    > + Send
-    + 'static{
+    > {
         match upstream {
-            super::Upstream::OpenRouter => self
-                .openrouter_client
-                .create_streaming_for_chat(
-                    id,
-                    byok,
-                    cost_multiplier,
-                    first_chunk_timeout,
-                    other_chunk_timeout,
-                    ensemble_llm,
-                    request,
+            objectiveai::chat::completions::Upstream::Unknown => {
+                panic!(
+                    "`create_streaming_for_chat` called with `Unknown` upstream"
                 )
-                .map_err(super::Error::from),
+            }
+            objectiveai::chat::completions::Upstream::OpenRouter => {
+                let client = self.openrouter_client.as_ref()
+                    .expect("OpenRouter upstream requested but no OpenRouter client configured");
+                client
+                    .create_streaming_for_chat(
+                        id,
+                        byok,
+                        cost_multiplier,
+                        first_chunk_timeout,
+                        other_chunk_timeout,
+                        ensemble_llm,
+                        request,
+                    )
+                    .map_err(super::Error::from)
+                    .boxed()
+            }
+            objectiveai::chat::completions::Upstream::ClaudeAgentSdk => {
+                let client = self.claude_agent_sdk_client.as_ref()
+                    .expect("ClaudeAgentSdk upstream requested but no Claude Agent SDK client configured");
+                client
+                    .create_streaming_for_chat(
+                        id,
+                        byok,
+                        cost_multiplier,
+                        first_chunk_timeout,
+                        other_chunk_timeout,
+                        ensemble_llm,
+                        request,
+                    )
+                    .map_err(super::Error::from)
+                    .boxed()
+            }
         }
     }
 
@@ -211,7 +248,7 @@ impl Client {
     /// The LLM sees responses labeled with prefix keys and responds with its choice.
     fn create_streaming_for_vector(
         &self,
-        upstream: super::Upstream,
+        upstream: objectiveai::chat::completions::Upstream,
         id: String,
         byok: Option<&str>,
         cost_multiplier: rust_decimal::Decimal,
@@ -220,27 +257,57 @@ impl Client {
         ensemble_llm: &objectiveai::ensemble_llm::EnsembleLlm,
         request: &objectiveai::vector::completions::request::VectorCompletionCreateParams,
         vector_pfx_indices: &[(String, usize)],
-    ) -> impl Stream<
-        Item = Result<
-            objectiveai::chat::completions::response::streaming::ChatCompletionChunk,
-            super::Error,
+    ) -> std::pin::Pin<
+        Box<
+            dyn Stream<
+                    Item = Result<
+                        objectiveai::chat::completions::response::streaming::ChatCompletionChunk,
+                        super::Error,
+                    >,
+                > + Send
+                + 'static,
         >,
-    > + Send
-    + 'static{
+    > {
         match upstream {
-            super::Upstream::OpenRouter => self
-                .openrouter_client
-                .create_streaming_for_vector(
-                    id,
-                    byok,
-                    cost_multiplier,
-                    first_chunk_timeout,
-                    other_chunk_timeout,
-                    ensemble_llm,
-                    request,
-                    vector_pfx_indices,
+            objectiveai::chat::completions::Upstream::Unknown => {
+                panic!(
+                    "`create_streaming_for_vector` called with `Unknown` upstream"
                 )
-                .map_err(super::Error::from),
+            }
+            objectiveai::chat::completions::Upstream::OpenRouter => {
+                let client = self.openrouter_client.as_ref()
+                    .expect("OpenRouter upstream requested but no OpenRouter client configured");
+                client
+                    .create_streaming_for_vector(
+                        id,
+                        byok,
+                        cost_multiplier,
+                        first_chunk_timeout,
+                        other_chunk_timeout,
+                        ensemble_llm,
+                        request,
+                        vector_pfx_indices,
+                    )
+                    .map_err(super::Error::from)
+                    .boxed()
+            }
+            objectiveai::chat::completions::Upstream::ClaudeAgentSdk => {
+                let client = self.claude_agent_sdk_client.as_ref()
+                    .expect("ClaudeAgentSdk upstream requested but no Claude Agent SDK client configured");
+                client
+                    .create_streaming_for_vector(
+                        id,
+                        byok,
+                        cost_multiplier,
+                        first_chunk_timeout,
+                        other_chunk_timeout,
+                        ensemble_llm,
+                        request,
+                        vector_pfx_indices,
+                    )
+                    .map_err(super::Error::from)
+                    .boxed()
+            }
         }
     }
 }

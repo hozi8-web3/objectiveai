@@ -3,6 +3,8 @@
 //! This module contains clients for communicating with upstream LLM providers
 //! like OpenRouter.
 
+/// Claude Agent SDK provider client and types.
+pub mod claude_agent_sdk;
 mod client;
 mod error;
 /// OpenRouter provider client and types.

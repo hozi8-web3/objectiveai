@@ -28,6 +28,8 @@ pub struct ChatCompletion {
     pub system_fingerprint: Option<String>,
     /// Token usage statistics.
     pub usage: response::Usage,
+    /// Upstream provider
+    pub upstream: crate::chat::completions::Upstream,
 
     /// The provider that served the request (OpenRouter-specific).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -47,6 +49,7 @@ impl From<response::streaming::ChatCompletionChunk> for ChatCompletion {
             service_tier,
             system_fingerprint,
             usage,
+            upstream,
             provider,
         }: response::streaming::ChatCompletionChunk,
     ) -> Self {
@@ -61,6 +64,7 @@ impl From<response::streaming::ChatCompletionChunk> for ChatCompletion {
             service_tier,
             system_fingerprint,
             usage: usage.unwrap_or_default(),
+            upstream,
             provider,
         }
     }

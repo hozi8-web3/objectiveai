@@ -21,6 +21,9 @@ pub struct FunctionRemoteRequestBody {
     pub from_rng: Option<bool>,
 
     // core config
+    /// Available upstreams for this request
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upstreams: Option<Vec<crate::chat::completions::Upstream>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_retries: Option<u64>,
     pub n: u64,

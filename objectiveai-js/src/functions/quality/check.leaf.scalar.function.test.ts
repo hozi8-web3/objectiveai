@@ -47,6 +47,7 @@ function leafScalar(
 function scalarFunctionTask(map?: number) {
   return {
     type: "scalar.function",
+    remote: "github",
     owner: "test",
     repository: "test",
     commit: "abc123",
@@ -59,6 +60,7 @@ function scalarFunctionTask(map?: number) {
 function vectorFunctionTask(map?: number) {
   return {
     type: "vector.function",
+    remote: "github",
     owner: "test",
     repository: "test",
     commit: "abc123",

@@ -13,7 +13,7 @@ use crate::functions::expression::{
     WithExpression,
 };
 use crate::functions::quality::check_leaf_vector_function;
-use crate::functions::{
+use crate::functions::{Remote, 
     PlaceholderScalarFunctionTaskExpression,
     PlaceholderVectorFunctionTaskExpression, RemoteFunction,
     ScalarFunctionTaskExpression, TaskExpression,
@@ -173,6 +173,7 @@ fn contains_scalar_function_task() {
         input_maps: None,
         tasks: vec![TaskExpression::ScalarFunction(
             ScalarFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),
@@ -213,6 +214,7 @@ fn contains_vector_function_task() {
         input_maps: None,
         tasks: vec![TaskExpression::VectorFunction(
             VectorFunctionTaskExpression {
+            remote: Remote::Github,
                 owner: "test".to_string(),
                 repository: "test".to_string(),
                 commit: "abc123".to_string(),

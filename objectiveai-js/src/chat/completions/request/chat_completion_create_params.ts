@@ -6,6 +6,7 @@ import { ResponseFormatSchema } from "./response_format";
 import { ToolChoiceSchema } from "./tool_choice";
 import { ToolsSchema } from "./tool";
 import { PredictionSchema } from "./prediction";
+import { UpstreamsSchema } from "../upstream";
 import { convert, type JSONSchema } from "../../../json_schema";
 
 export const SeedSchema = z
@@ -42,6 +43,7 @@ export const OtherChunkTimeoutJsonSchema: JSONSchema = convert(OtherChunkTimeout
 
 export const ChatCompletionCreateParamsBaseSchema = z
   .object({
+    upstreams: UpstreamsSchema,
     messages: MessagesSchema,
     provider: ProviderSchema.optional().nullable(),
     model: ModelSchema,

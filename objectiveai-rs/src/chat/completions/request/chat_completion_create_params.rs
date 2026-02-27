@@ -5,6 +5,9 @@ use serde::{Deserialize, Serialize};
 /// Parameters for creating a chat completion.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatCompletionCreateParams {
+    /// Available upstreams for this request
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upstreams: Option<Vec<crate::chat::completions::Upstream>>,
     /// The conversation messages.
     pub messages: Vec<super::Message>,
     /// Provider routing preferences.
@@ -41,7 +44,6 @@ pub struct ChatCompletionCreateParams {
     pub prediction: Option<super::Prediction>,
 
     // --- Retry configuration ---
-
     /// Maximum elapsed time (ms) for exponential backoff retries.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub backoff_max_elapsed_time: Option<u64>,
